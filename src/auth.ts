@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID ?? process.env.GOOGLE_CLIENT_ID,
@@ -28,7 +29,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
     session({ session, user }) {
-      session.user.id = user.id;
+      if (session.user && user?.id) {
+        session.user.id = user.id;
+      }
       return session;
     },
   },
