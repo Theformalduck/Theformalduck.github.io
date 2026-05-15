@@ -1,7 +1,6 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
+import { Suspense } from "react";
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -55,7 +54,7 @@ interface ReferralData {
   link: string;
 }
 
-export default function SettingsPage() {
+function SettingsPageInner() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get("tab") ?? "profile";
   const upgraded = searchParams.get("upgraded") === "1";
@@ -474,5 +473,13 @@ export default function SettingsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense>
+      <SettingsPageInner />
+    </Suspense>
   );
 }

@@ -1,12 +1,11 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
+import { Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function SignInPage() {
+function SignInPageInner() {
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
 
@@ -89,5 +88,13 @@ export default function SignInPage() {
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense>
+      <SignInPageInner />
+    </Suspense>
   );
 }
