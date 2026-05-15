@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Eye, Zap, Palette, ExternalLink, Sparkles } from "lucide-react";
+import { Check, Eye, Zap, Palette, ExternalLink, Sparkles, Crown, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardSidebar from "@/components/DashboardSidebar";
@@ -16,6 +16,7 @@ const CATS = [
   { id: "light",    label: "Light" },
   { id: "gradient", label: "Gradient" },
   { id: "mono",     label: "Terminal" },
+  { id: "pro",      label: "Pro" },
 ];
 
 function presetCat(p: Preset): string[] {
@@ -23,6 +24,7 @@ function presetCat(p: Preset): string[] {
   if (p.bg.startsWith("#f") || p.bg.startsWith("#fa")) cats.push("light"); else cats.push("dark");
   if (p.bgGradient) cats.push("gradient");
   if (p.font === "mono") cats.push("mono");
+  if (p.pro) cats.push("pro");
   return cats;
 }
 
@@ -83,18 +85,23 @@ function PresetThumbnail({ preset }: { preset: Preset }) {
 function PresetCard({
   preset,
   active,
+  isPro,
   onSelect,
   onApply,
   onPreview,
+  onUpgrade,
 }: {
   preset: Preset;
   active: boolean;
+  isPro: boolean;
   onSelect: () => void;
   onApply: () => void;
   onPreview: () => void;
+  onUpgrade: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const fontLabel = { system: "Sans-serif", serif: "Serif", mono: "Monospace", elegant: "Elegant" }[preset.font];
+  const locked = preset.pro && !isPro;
 
   return (
     <motion.div
@@ -104,7 +111,7 @@ function PresetCard({
       exit={{ opacity: 0, scale: 0.9 }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
-      onClick={onSelect}
+      onClick={locked ? onUpgrade : onSelect}
       className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all ${
         active ? "ring-2 ring-indigo-400/60 shadow-lg shadow-indigo-500/10" : "hover:ring-1 hover:ring-white/20"
       }`}
@@ -114,45 +121,75 @@ function PresetCard({
       <div className="relative overflow-hidden">
         <PresetThumbnail preset={preset} />
 
-        {/* Hover overlay */}
-        <AnimatePresence>
-          {hovered && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 flex items-center justify-center gap-2"
-              style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+        {/* Pro lock overlay (always visible on locked themes) */}
+        {locked && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+            style={{ background: "rgba(0,0,0,0.62)", backdropFilter: "blur(3px)" }}>
+            <div className="w-9 h-9 rounded-xl bg-amber-400/15 border border-amber-400/25 flex items-center justify-center">
+              <Crown className="w-4.5 h-4.5 text-amber-400" style={{ width: 18, height: 18 }} />
+            </div>
+            <span className="text-[11px] font-semibold text-amber-400">Pro Exclusive</span>
+            <button
+              onClick={e => { e.stopPropagation(); onUpgrade(); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-400 text-[#0a0600] text-xs font-bold hover:bg-amber-300 transition-all mt-0.5"
             >
-              <button
-                onClick={e => { e.stopPropagation(); onPreview(); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs font-medium hover:bg-white/20 transition-all border border-white/20"
+              <Zap className="w-3 h-3" /> Unlock Pro
+            </button>
+          </div>
+        )}
+
+        {/* Hover overlay (only for unlocked themes) */}
+        {!locked && (
+          <AnimatePresence>
+            {hovered && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 flex items-center justify-center gap-2"
+                style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
               >
-                <Eye className="w-3.5 h-3.5" /> Preview
-              </button>
-              <button
-                onClick={e => { e.stopPropagation(); onApply(); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                style={{ background: preset.accent, color: preset.bg }}
-              >
-                {active ? <><Check className="w-3.5 h-3.5" />Applied</> : <><Zap className="w-3.5 h-3.5" />Apply</>}
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <button
+                  onClick={e => { e.stopPropagation(); onPreview(); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs font-medium hover:bg-white/20 transition-all border border-white/20"
+                >
+                  <Eye className="w-3.5 h-3.5" /> Preview
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); onApply(); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{ background: preset.accent, color: preset.bg }}
+                >
+                  {active ? <><Check className="w-3.5 h-3.5" />Applied</> : <><Zap className="w-3.5 h-3.5" />Apply</>}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
 
         {/* Active badge */}
-        {active && (
+        {active && !locked && (
           <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-lg">
             <Check className="w-3 h-3 text-[#060608]" />
+          </div>
+        )}
+
+        {/* Pro badge (top-right, always on pro themes, when not locked) */}
+        {preset.pro && !locked && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-400/20 border border-amber-400/30">
+            <Crown className="w-2.5 h-2.5 text-amber-400" />
+            <span className="text-[8px] font-bold text-amber-400">PRO</span>
           </div>
         )}
       </div>
 
       {/* Info row */}
-      <div className="bg-white/[0.025] px-3.5 py-2.5 flex items-center justify-between">
+      <div className={`px-3.5 py-2.5 flex items-center justify-between ${locked ? "bg-white/[0.015]" : "bg-white/[0.025]"}`}>
         <div>
-          <p className="text-xs font-semibold text-white/90 leading-tight">{preset.label}</p>
+          <div className="flex items-center gap-1.5">
+            <p className={`text-xs font-semibold leading-tight ${locked ? "text-white/50" : "text-white/90"}`}>{preset.label}</p>
+            {locked && <Lock className="w-2.5 h-2.5 text-white/25" />}
+          </div>
           <p className="text-[10px] text-white/35 mt-0.5">{preset.desc}</p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -174,8 +211,9 @@ export default function ThemesPage() {
   const [selectedPreset, setSelectedPreset] = useState<string>("void");
   const [saving, setSaving] = useState(false);
   const [subdomain, setSubdomain] = useState<string | null>(null);
+  const [isPro, setIsPro] = useState(false);
 
-  // Load current portfolio preset from API
+  // Load current portfolio preset + subscription status
   useEffect(() => {
     fetch("/api/user/portfolio")
       .then(r => r.json())
@@ -184,14 +222,22 @@ export default function ThemesPage() {
         if (json.subdomain) setSubdomain(json.subdomain);
       })
       .catch(() => {});
+    fetch("/api/user/subscription")
+      .then(r => r.json())
+      .then(json => setIsPro(json.isPro === true))
+      .catch(() => {});
   }, []);
 
   const filtered = PRESETS.filter(p => presetCat(p).includes(activeCat));
 
   const applyPreset = async (presetId: string) => {
+    const preset = PRESETS.find(p => p.id === presetId);
+    if (preset?.pro && !isPro) {
+      router.push("/settings?tab=billing");
+      return;
+    }
     setSaving(true);
     try {
-      // Fetch current portfolio data to merge with new theme
       const getRes = await fetch("/api/user/portfolio");
       const current = await getRes.json();
       await fetch("/api/user/portfolio", {
@@ -206,7 +252,7 @@ export default function ThemesPage() {
       });
       setActivePreset(presetId);
       setSelectedPreset(presetId);
-      toast.success(`${PRESETS.find(p => p.id === presetId)?.label} applied!`, {
+      toast.success(`${preset?.label} applied!`, {
         description: "Open the portfolio editor to see it live.",
         action: { label: "Open editor", onClick: () => router.push("/editor/portfolio") },
       });
@@ -219,18 +265,21 @@ export default function ThemesPage() {
 
   const openPreview = () => {
     if (subdomain) window.open(`/p/${subdomain}`, "_blank");
-    else window.open("/portfolio/preview", "_blank");
   };
 
+  const handleUpgrade = () => router.push("/settings?tab=billing");
+
   const currentPreset = PRESETS.find(p => p.id === activePreset);
+  const proCount = PRESETS.filter(p => p.pro).length;
+  const freeCount = PRESETS.filter(p => !p.pro).length;
 
   return (
     <div className="flex min-h-screen">
       <DashboardSidebar />
 
-      <main className="flex-1 ml-[220px] min-h-screen">
+      <main className="flex-1 md:ml-[220px] min-h-screen">
         {/* Top bar */}
-        <div className="h-16 border-b border-white/[0.05] flex items-center justify-between px-8 bg-white/[0.03] backdrop-blur-xl sticky top-0 z-30">
+        <div className="h-16 border-b border-white/[0.05] flex items-center justify-between px-4 pl-14 md:px-8 bg-white/[0.03] backdrop-blur-xl sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <Palette className="w-5 h-5 text-pink-400" />
             <h1 className="font-semibold text-white">Design Presets</h1>
@@ -257,11 +306,39 @@ export default function ThemesPage() {
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
+          {/* Pro upsell banner (only shown to free users) */}
+          {!isPro && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl bg-amber-400/[0.06] border border-amber-400/20 px-6 py-4 flex items-center gap-4 mb-6"
+            >
+              <div className="w-10 h-10 rounded-xl bg-amber-400/15 flex items-center justify-center flex-shrink-0">
+                <Crown className="w-5 h-5 text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-300">
+                  {proCount} Pro themes available
+                </p>
+                <p className="text-xs text-white/40 mt-0.5">
+                  {freeCount} free themes included · Upgrade to unlock all {PRESETS.length}
+                </p>
+              </div>
+              <button
+                onClick={handleUpgrade}
+                className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-400 text-[#0a0600] hover:bg-amber-300 transition-all"
+              >
+                <Zap className="w-3.5 h-3.5" /> Go Pro — $9/mo
+              </button>
+            </motion.div>
+          )}
+
           {/* AI suggestion banner */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
             className="rounded-2xl bg-white/[0.025] border border-white/[0.06] px-6 py-4 flex items-center gap-4 mb-8"
           >
             <div className="w-10 h-10 rounded-xl bg-white/[0.08] flex items-center justify-center flex-shrink-0">
@@ -282,19 +359,22 @@ export default function ThemesPage() {
           </motion.div>
 
           {/* Category tabs */}
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-6 flex-wrap">
             {CATS.map(cat => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCat(cat.id)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
                   activeCat === cat.id
-                    ? "bg-white/[0.08] text-white border border-white/[0.15]"
+                    ? cat.id === "pro"
+                      ? "bg-amber-400/15 text-amber-400 border border-amber-400/30"
+                      : "bg-white/[0.08] text-white border border-white/[0.15]"
                     : "text-white/35 hover:text-white/70 hover:bg-white/[0.04]"
                 }`}
               >
+                {cat.id === "pro" && <Crown className="w-3 h-3" />}
                 {cat.label}
-                <span className="ml-1.5 text-[10px] opacity-50">
+                <span className="text-[10px] opacity-50">
                   {cat.id === "all" ? PRESETS.length : PRESETS.filter(p => presetCat(p).includes(cat.id)).length}
                 </span>
               </button>
@@ -316,9 +396,11 @@ export default function ThemesPage() {
                   <PresetCard
                     preset={preset}
                     active={activePreset === preset.id}
+                    isPro={isPro}
                     onSelect={() => setSelectedPreset(preset.id)}
                     onApply={() => applyPreset(preset.id)}
                     onPreview={openPreview}
+                    onUpgrade={handleUpgrade}
                   />
                 </motion.div>
               ))}
@@ -345,20 +427,31 @@ export default function ThemesPage() {
                 {(() => {
                   const p = PRESETS.find(x => x.id === selectedPreset);
                   if (!p) return null;
+                  const locked = p.pro && !isPro;
                   return (
                     <>
                       <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: p.accent }} />
                       <span className="text-sm text-white/80 font-medium">{p.label}</span>
+                      {p.pro && <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-400/15 border border-amber-400/25 text-amber-400"><Crown className="w-2.5 h-2.5" />PRO</span>}
                       <span className="text-xs text-white/35">{p.desc}</span>
                       <div className="w-px h-4 bg-white/10" />
-                      <button
-                        onClick={() => applyPreset(selectedPreset)}
-                        disabled={saving}
-                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
-                        style={{ background: p.accent, color: p.bg }}
-                      >
-                        {saving ? "Applying…" : <><Zap className="w-3.5 h-3.5" />Apply preset</>}
-                      </button>
+                      {locked ? (
+                        <button
+                          onClick={() => handleUpgrade()}
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-amber-400 text-[#0a0600] hover:bg-amber-300 transition-all"
+                        >
+                          <Crown className="w-3.5 h-3.5" /> Unlock with Pro
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => applyPreset(selectedPreset)}
+                          disabled={saving}
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+                          style={{ background: p.accent, color: p.bg }}
+                        >
+                          {saving ? "Applying…" : <><Zap className="w-3.5 h-3.5" />Apply preset</>}
+                        </button>
+                      )}
                       <button
                         onClick={() => setSelectedPreset(activePreset)}
                         className="text-xs text-white/35 hover:text-white/60 transition-colors"

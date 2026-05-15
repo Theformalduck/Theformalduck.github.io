@@ -11,7 +11,6 @@ import {
   Globe,
   MoreHorizontal,
   Eye,
-  Download,
   Copy,
   Trash2,
   Sparkles,
@@ -21,11 +20,12 @@ import {
   ArrowUpRight,
   Zap,
   ChevronRight,
-  GitBranch,
   Brain,
   Target,
-  AlertCircle,
   Palette,
+  Star,
+  Crown,
+  Lock,
 } from "lucide-react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { computeScore } from "@/lib/scoring";
@@ -51,6 +51,7 @@ interface ResumeEntry {
   id: string;
   label: string;
   data: ResumeData;
+  isDefault: boolean;
   updatedAt: string;
 }
 
@@ -160,17 +161,17 @@ function ScoreRing({ score, size = 56 }: { score: number; size?: number }) {
 }
 
 function ResumeCard({
-  entry, atsScore, onDelete, onDuplicate,
+  entry, atsScore, onDelete, onDuplicate, onSetDefault,
 }: {
   entry: ResumeEntry;
   atsScore: number;
   onDelete: (id: string) => void;
   onDuplicate: (entry: ResumeEntry) => void;
+  onSetDefault: (id: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const resume = entry.data ?? { name: "", title: "", skills: [], experience: [], projects: [], education: [], summary: "" };
-  const hasCustomData = !!(resume.name && resume.name !== "John Doe");
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -194,16 +195,24 @@ function ResumeCard({
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group rounded-2xl bg-white/[0.025] border border-white/[0.06] p-5 hover:bg-white/[0.02] hover:border-white/[0.1] transition-all relative"
+      className={`group rounded-2xl border p-5 hover:bg-white/[0.02] transition-all relative ${
+        entry.isDefault
+          ? "bg-white/[0.03] border-amber-400/20"
+          : "bg-white/[0.025] border-white/[0.06] hover:border-white/[0.1]"
+      }`}
     >
       <div className="flex items-start justify-between mb-4">
-        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-          hasCustomData
-            ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-            : "text-white/35 bg-white/[0.05] border-white/[0.1]"
-        }`}>
-          {hasCustomData ? "● Active" : "○ Default"}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {entry.isDefault ? (
+            <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/25 text-amber-400">
+              <Star className="w-2.5 h-2.5" /> Default
+            </span>
+          ) : (
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-white/35 bg-white/[0.05] border-white/[0.1]">
+              Resume
+            </span>
+          )}
+        </div>
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -212,15 +221,22 @@ function ResumeCard({
             <MoreHorizontal className="w-4 h-4 text-white/45" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-8 w-44 rounded-xl bg-white/[0.04] border border-white/[0.08] shadow-xl p-1 z-10">
+            <div className="absolute right-0 top-8 w-48 rounded-xl bg-[#0e0e14] border border-white/[0.08] shadow-xl p-1 z-10">
               <button onClick={() => { setMenuOpen(false); window.open(`/editor/resume?id=${entry.id}`, "_blank"); }}
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-white/45 hover:bg-white/[0.05] hover:text-white/90 transition-all">
                 <Eye className="w-3.5 h-3.5" /> Preview
               </button>
+              {!entry.isDefault && (
+                <button onClick={() => { setMenuOpen(false); onSetDefault(entry.id); }}
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-amber-400/70 hover:bg-amber-400/[0.06] hover:text-amber-400 transition-all">
+                  <Star className="w-3.5 h-3.5" /> Set as Default
+                </button>
+              )}
               <button onClick={() => { setMenuOpen(false); onDuplicate(entry); }}
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-white/45 hover:bg-white/[0.05] hover:text-white/90 transition-all">
                 <Copy className="w-3.5 h-3.5" /> Duplicate
               </button>
+              <div className="h-px bg-white/[0.05] my-1" />
               <button onClick={() => { setMenuOpen(false); onDelete(entry.id); }}
                 className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-red-400/60 hover:bg-red-500/10 hover:text-red-400 transition-all">
                 <Trash2 className="w-3.5 h-3.5" /> Delete
@@ -264,13 +280,37 @@ function ResumeCard({
   );
 }
 
-function NewResumeCard({ onCreate }: { onCreate: () => void }) {
+function NewResumeCard({ onCreate, locked, onUpgrade }: { onCreate: () => void; locked: boolean; onUpgrade: () => void }) {
+  if (locked) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl border border-amber-400/10 bg-amber-400/[0.03] p-4 flex items-center gap-4"
+      >
+        <div className="w-8 h-8 rounded-xl bg-amber-400/10 flex items-center justify-center flex-shrink-0">
+          <Crown className="w-4 h-4 text-amber-400/60" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-amber-400/70">Multiple resumes — Pro only</p>
+          <p className="text-[10px] text-white/30 mt-0.5">Create tailored resumes for different roles or companies</p>
+        </div>
+        <button
+          onClick={onUpgrade}
+          className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/25 text-amber-400 hover:bg-amber-400/25 transition-colors"
+        >
+          Upgrade
+        </button>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.button
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       onClick={onCreate}
-      className="w-full rounded-2xl border border-dashed border-white/[0.08] p-5 flex flex-col items-center justify-center text-center gap-3 min-h-[140px] hover:border-white/[0.15] hover:bg-white/[0.02] transition-all group"
+      className="w-full rounded-2xl border border-dashed border-white/[0.08] p-5 flex flex-col items-center justify-center text-center gap-3 min-h-[120px] hover:border-white/[0.15] hover:bg-white/[0.02] transition-all group"
     >
       <div className="w-8 h-8 rounded-xl bg-white/[0.05] flex items-center justify-center">
         <Plus className="w-4 h-4 text-white/35 group-hover:text-white/45 transition-colors" />
@@ -289,6 +329,7 @@ export default function DashboardPage() {
   const [loaded, setLoaded] = useState(false);
   const [brandScore, setBrandScore] = useState<BrandScore | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
     fetch("/api/user/resumes")
@@ -296,13 +337,25 @@ export default function DashboardPage() {
       .then(json => { if (json.resumes) setResumes(json.resumes); })
       .catch(() => {})
       .finally(() => setLoaded(true));
+    fetch("/api/user/subscription")
+      .then(r => r.json())
+      .then(json => setIsPro(json.isPro === true))
+      .catch(() => {});
+    // Apply referral code from cookie if present (set when landing via ?ref= link)
+    fetch("/api/user/apply-referral", { method: "POST" }).catch(() => {});
   }, []);
 
-  const primaryResume = resumes[0]?.data ?? null;
+  const primaryResume = (resumes.find(r => r.isDefault) ?? resumes[0])?.data ?? null;
   const atsScore = primaryResume ? scoreResume(primaryResume) : 0;
   const aiSuggestions = primaryResume ? deriveAISuggestions(primaryResume) : [];
 
   const createResume = async () => {
+    if (!isPro && resumes.length >= 1) {
+      // They have their one free resume — take them to edit it, not billing
+      toast.info("You already have a resume. Upgrade to Pro to create multiple resumes.", { duration: 4000 });
+      router.push(`/editor/resume?id=${resumes[0].id}`);
+      return;
+    }
     const tid = toast.loading("Creating new resume…");
     try {
       const res = await fetch("/api/user/resumes", {
@@ -311,6 +364,12 @@ export default function DashboardPage() {
         body: JSON.stringify({ label: "New Resume" }),
       });
       const json = await res.json();
+      if (json.proRequired) {
+        toast.dismiss(tid);
+        toast.info("Upgrade to Pro to create multiple resumes.", { duration: 4000 });
+        router.push(`/editor/resume?id=${resumes[0].id}`);
+        return;
+      }
       toast.dismiss(tid);
       router.push(`/editor/resume?id=${json.id}`);
     } catch {
@@ -333,6 +392,11 @@ export default function DashboardPage() {
   };
 
   const duplicateResume = async (entry: ResumeEntry) => {
+    if (!isPro && resumes.length >= 1) {
+      toast.info("Upgrade to Pro to create multiple resumes.", { duration: 4000 });
+      router.push("/settings?tab=billing");
+      return;
+    }
     const tid = toast.loading("Duplicating…");
     try {
       const res = await fetch("/api/user/resumes", {
@@ -341,10 +405,16 @@ export default function DashboardPage() {
         body: JSON.stringify({ label: `${entry.label} (copy)`, data: entry.data }),
       });
       const json = await res.json();
+      if (json.proRequired) {
+        toast.dismiss(tid);
+        router.push("/settings?tab=billing");
+        return;
+      }
       const newEntry: ResumeEntry = {
         id: json.id,
         label: json.label,
         data: entry.data,
+        isDefault: false,
         updatedAt: new Date().toISOString(),
       };
       setResumes(prev => [newEntry, ...prev]);
@@ -353,6 +423,20 @@ export default function DashboardPage() {
     } catch {
       toast.dismiss(tid);
       toast.error("Could not duplicate resume");
+    }
+  };
+
+  const setDefaultResume = async (id: string) => {
+    try {
+      await fetch(`/api/user/resumes/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isDefault: true }),
+      });
+      setResumes(prev => prev.map(r => ({ ...r, isDefault: r.id === id })));
+      toast.success("Default resume updated");
+    } catch {
+      toast.error("Could not update default resume");
     }
   };
 
@@ -424,38 +508,38 @@ export default function DashboardPage() {
     <div className="flex min-h-screen bg-[#050508]">
       <DashboardSidebar />
 
-      <main className="flex-1 ml-[220px] min-h-screen">
+      <main className="flex-1 md:ml-[220px] min-h-screen">
         {/* Top bar */}
-        <div className="h-16 border-b border-white/[0.05] flex items-center justify-between px-8 bg-[#050508]/80 backdrop-blur-xl sticky top-0 z-30">
+        <div className="h-16 border-b border-white/[0.05] flex items-center justify-between px-4 pl-14 md:px-8 bg-[#050508]/80 backdrop-blur-xl sticky top-0 z-30">
           <div>
             <h1 className="font-semibold text-base">Dashboard</h1>
-            <p className="text-xs text-white/35">{greeting}, {firstName}</p>
+            <p className="text-xs text-white/35 hidden sm:block">{greeting}, {firstName}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {aiSuggestions.filter(s => s.priority === "high").length > 0 && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/55 text-xs">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/55 text-xs">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{aiSuggestions.filter(s => s.priority === "high").length} high-priority insights</span>
               </div>
             )}
             <button
               onClick={createResume}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white text-[#060608] text-sm font-medium hover:bg-white/90 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white text-[#060608] text-sm font-medium hover:bg-white/90 transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              New Resume
+              {!isPro && resumes.length >= 1 ? <FileText className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              <span className="hidden sm:inline">{!isPro && resumes.length >= 1 ? "Edit Resume" : "New Resume"}</span>
             </button>
           </div>
         </div>
 
-        <div className="p-8 space-y-8">
+        <div className="p-4 md:p-8 space-y-6 md:space-y-8">
           {/* Get started guide for new users */}
           {loaded && resumes.length === 0 && (
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
               <div className="rounded-2xl bg-white/[0.02] border border-white/[0.08] p-6">
                 <p className="text-base font-semibold mb-1">Get started in 3 steps</p>
                 <p className="text-xs text-white/35 mb-5">Folio.ai helps you build a professional resume and a public portfolio site — powered by AI.</p>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[
                     { step: "1", title: "Build your resume", desc: "Add your experience, skills, and education. AI will suggest improvements.", href: "/editor/resume", cta: "Open Resume Editor" },
                     { step: "2", title: "Create your portfolio", desc: "Generate a live public website from your resume data with one click.", href: "/editor/portfolio", cta: "Open Portfolio Editor" },
@@ -533,10 +617,22 @@ export default function DashboardPage() {
             {/* Resumes */}
             <div className="lg:col-span-2">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-white/45 uppercase tracking-wider">My Resumes</h2>
-                <button onClick={createResume} className="text-xs text-white/40 hover:text-white/60 flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> New
-                </button>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-white/45 uppercase tracking-wider">My Resumes</h2>
+                  {!isPro && (
+                    <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/20 text-amber-400/70">
+                      <Lock className="w-2.5 h-2.5" />1 free
+                    </span>
+                  )}
+                </div>
+                {(isPro || resumes.length === 0) && (
+                  <button
+                    onClick={createResume}
+                    className="text-xs flex items-center gap-1 text-white/40 hover:text-white/60 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" /> New
+                  </button>
+                )}
               </div>
               <div className="space-y-3">
                 {resumes.map(entry => (
@@ -546,9 +642,14 @@ export default function DashboardPage() {
                     atsScore={entry.data ? scoreResume(entry.data) : 0}
                     onDelete={deleteResume}
                     onDuplicate={duplicateResume}
+                    onSetDefault={setDefaultResume}
                   />
                 ))}
-                <NewResumeCard onCreate={createResume} />
+                <NewResumeCard
+                  onCreate={createResume}
+                  locked={!isPro && resumes.length >= 1}
+                  onUpgrade={() => router.push("/settings?tab=billing")}
+                />
               </div>
             </div>
 

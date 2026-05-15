@@ -1,3 +1,5 @@
+import { auth } from "@/auth";
+import { checkAndIncrementAIUsage } from "@/lib/aiUsage";
 import { NextResponse } from "next/server";
 
 const PURPOSE_CONTEXT: Record<string, string> = {
@@ -179,6 +181,14 @@ function postProcess(text: string): string {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const usage = await checkAndIncrementAIUsage(session.user.id);
+    if (!usage.allowed) {
+      return NextResponse.json({ error: "AI limit reached", limitReached: true, used: usage.used, limit: usage.limit }, { status: 429 });
+    }
+
     const { text, bypass = "advanced", purpose = "general" } = await req.json();
 
     if (!text?.trim()) {

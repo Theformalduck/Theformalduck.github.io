@@ -49,20 +49,20 @@ JSON structure to populate:
   "linkedin": "linkedin URL or handle (no https://)",
   "github": "github URL or handle (no https://)",
   "summary": "professional summary paragraph (2-4 sentences)",
+  "education": [
+    {
+      "school": "University or school name",
+      "degree": "Degree and major (e.g. B.S. Computer Science)",
+      "period": "Start – End years (e.g. 2018 – 2022)",
+      "gpa": "GPA if listed, else empty string"
+    }
+  ],
   "experience": [
     {
       "company": "Company name",
       "role": "Job title",
       "period": "Start – End (e.g. Jan 2022 – Mar 2024)",
       "bullets": ["achievement bullet 1", "achievement bullet 2"]
-    }
-  ],
-  "education": [
-    {
-      "school": "University or school name",
-      "degree": "Degree and major",
-      "period": "Start – End years",
-      "gpa": "GPA if listed, else empty string"
     }
   ],
   "skills": [
@@ -82,13 +82,14 @@ JSON structure to populate:
 }
 
 Rules:
+- ALWAYS include the "education" array. Scan the ENTIRE resume text for any education section (look for keywords: Education, Degree, University, College, Bachelor, Master, PhD, B.S., M.S., B.A., M.A., MBA, GPA, graduated). Even a single institution must be captured.
 - Group skills into logical categories (Frontend, Backend, DevOps, Languages, Tools, etc.)
 - Keep bullet points concise and achievement-focused
 - If there is no summary in the resume, write a short one from the experience context
 - Return ONLY the JSON object, nothing else
 
 Resume text:
-${text.slice(0, 12000)}`;
+${text.slice(0, 16000)}`;
 
 export async function POST(req: NextRequest) {
   try {

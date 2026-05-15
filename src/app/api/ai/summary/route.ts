@@ -1,4 +1,6 @@
+import { auth } from "@/auth";
 import { chat } from "@/lib/openrouter";
+import { checkAndIncrementAIUsage } from "@/lib/aiUsage";
 import { NextResponse } from "next/server";
 
 const MODE_PROMPTS: Record<string, string> = {
@@ -11,6 +13,14 @@ const MODE_PROMPTS: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const usage = await checkAndIncrementAIUsage(session.user.id);
+    if (!usage.allowed) {
+      return NextResponse.json({ error: "AI limit reached", limitReached: true, used: usage.used, limit: usage.limit }, { status: 429 });
+    }
+
     const { current, mode, title, experience } = await req.json();
     const modeDesc = MODE_PROMPTS[mode] || MODE_PROMPTS.professional;
 

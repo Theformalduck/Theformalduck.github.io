@@ -16,9 +16,11 @@ interface ServiceItem  { id: string; name: string; desc: string; price: string }
 interface AwardItem    { id: string; title: string; org: string; year: string }
 interface PressItem    { id: string; publication: string; headline: string; url: string; year: string }
 
-type VideoBlock    = { id: string; type: "video";    title: string; url: string; caption: string }
-type GalleryBlock  = { id: string; type: "gallery";  title: string; images: GalleryImage[]; layout: "grid"|"masonry"|"row" }
-type ReelBlock     = { id: string; type: "reel";     title: string; url: string }
+interface VideoItem { id: string; url: string; caption: string }
+type VideoBlock    = { id: string; type: "video";    title: string; items?: VideoItem[]; columns?: 1|2|3; width?: "sm"|"md"|"lg"|"full"; align?: "left"|"center"|"right"; aspect?: "16:9"|"4:3"|"1:1"; url?: string; caption?: string }
+type GalleryBlock  = { id: string; type: "gallery";  title: string; images: GalleryImage[]; layout: "grid"|"masonry"|"row"; columns?: 1|2|3|4; imageHeight?: "short"|"square"|"tall"; gap?: "sm"|"md"|"lg" }
+interface ReelItem { id: string; url: string }
+type ReelBlock     = { id: string; type: "reel";     title: string; items?: ReelItem[]; columns?: 1|2|3; width?: "md"|"lg"|"full"; aspect?: "16:9"|"4:3"|"9:16"; url?: string }
 type ServicesBlock = { id: string; type: "services"; title: string; items: ServiceItem[] }
 type AwardsBlock   = { id: string; type: "awards";   title: string; items: AwardItem[] }
 type PressBlock    = { id: string; type: "press";    title: string; items: PressItem[] }
@@ -28,7 +30,8 @@ interface PortfolioData {
   portfolioType?: string;
   name: string; initials: string; title: string; bio: string;
   email: string; github: string; linkedin: string; twitter: string;
-  photo?: string; accentColor?: string; font?: string;
+  photo?: string; photoSize?: "sm"|"md"|"lg"|"xl"; photoShape?: "circle"|"rounded"|"square";
+  accentColor?: string; font?: string;
   projectLayout?: "grid" | "list";
   projects: Project[];
   skills: SkillGroup[];
@@ -53,6 +56,7 @@ export default function PublicPortfolioPage() {
   const [data, setData] = useState<PortfolioData | null>(null);
   const [preset, setPreset] = useState<Preset>(PRESETS[0]);
   const [notFound, setNotFound] = useState(false);
+  const [showBadge, setShowBadge] = useState(true);
 
   useEffect(() => {
     fetch(`/api/portfolio/${subdomain}`)
@@ -61,8 +65,25 @@ export default function PublicPortfolioPage() {
         if (json.error) { setNotFound(true); return; }
         setData(json.data);
         setPreset(getPreset(json.theme));
+        setShowBadge(json.showBadge !== false);
       })
       .catch(() => setNotFound(true));
+  }, [subdomain]);
+
+  // Track visit once per session
+  useEffect(() => {
+    const key = `tracked_${subdomain}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    const params = new URLSearchParams(window.location.search);
+    fetch(`/api/portfolio/${subdomain}/track`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        referrer: document.referrer || null,
+        utmSource: params.get("utm_source") || null,
+      }),
+    }).catch(() => {});
   }, [subdomain]);
 
   if (notFound) {
@@ -102,45 +123,82 @@ export default function PublicPortfolioPage() {
     ...extra,
   });
 
+  const aspectPB = (a?: string) => (({ "16:9": "56.25%", "4:3": "75%", "1:1": "100%", "9:16": "177.78%" } as Record<string,string>)[a || "16:9"] ?? "56.25%");
+  const vidWrapStyle = (w?: string, align?: string): React.CSSProperties => {
+    if (!w || w === "full") return {};
+    const widths: Record<string,string> = { sm: "50%", md: "70%", lg: "90%" };
+    const margins: Record<string,string> = { left: "0 auto 0 0", center: "0 auto", right: "0 0 0 auto" };
+    return { width: widths[w] ?? "100%", margin: margins[align || "center"] ?? "0 auto" };
+  };
+  const galCols = (block: GalleryBlock) => {
+    const n = block.columns ?? (block.layout === "row" ? block.images.length : 3);
+    return `repeat(${Math.min(n, block.images.length || n)},1fr)`;
+  };
+  const galAspect = (h?: string) => (({ short: "4/3", square: "1/1", tall: "3/4" } as Record<string,string>)[h || "square"] ?? "1/1");
+  const galGap = (g?: string) => (({ sm: 8, md: 16, lg: 24 } as Record<string,number>)[g || "md"] ?? 16);
+  const photoSizePx = ({ sm: 72, md: 96, lg: 128, xl: 180 } as Record<string,number>)[data.photoSize || "md"] ?? 96;
+  const photoRadius = ({ circle: "50%", rounded: 24, square: 4 } as Record<string,string|number>)[data.photoShape || "rounded"] ?? 24;
+
   const renderBlock = (block: CustomBlock) => {
     switch (block.type) {
-      case "reel":
-        if (!block.url) return null;
+      case "reel": {
+        const reelItems = block.items?.length ? block.items : block.url ? [{ id: "0", url: block.url }] : [];
+        if (!reelItems.some(i => i.url)) return null;
+        const reelCols = block.columns ?? 1;
+        const reelWrap = reelCols === 1 ? vidWrapStyle(block.width) : {};
         return (
-          <section key={block.id} style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px 96px" }}>
+          <section key={block.id} style={{ maxWidth: reelCols > 1 ? 1100 : 900, margin: "0 auto", padding: "0 24px 96px" }}>
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: `${preset.text}35`, textTransform: "uppercase", marginBottom: 8 }}>{block.title}</p>
-              <div style={{ borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: preset.card, border: `1px solid ${preset.border}` }}>
-                <iframe src={toEmbedUrl(block.url)} style={{ width: "100%", height: "100%", border: "none" }} allowFullScreen title={block.title} />
+              <div style={reelWrap}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${reelCols},1fr)`, gap: 16 }}>
+                  {reelItems.filter(i => i.url).map(item => (
+                    <div key={item.id} style={{ borderRadius: 20, overflow: "hidden", position: "relative", paddingBottom: aspectPB(block.aspect), background: preset.card, border: `1px solid ${preset.border}` }}>
+                      <iframe src={toEmbedUrl(item.url)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} allowFullScreen title={block.title} />
+                    </div>
+                  ))}
+                </div>
               </div>
             </motion.div>
           </section>
         );
+      }
 
-      case "video":
-        if (!block.url) return null;
+      case "video": {
+        const videoItems = block.items?.length ? block.items : block.url ? [{ id: "0", url: block.url, caption: block.caption || "" }] : [];
+        if (!videoItems.some(i => i.url)) return null;
+        const cols = block.columns ?? 1;
+        const wrapStyle = cols === 1 ? vidWrapStyle(block.width, block.align) : {};
         return (
-          <section key={block.id} style={{ maxWidth: 900, margin: "0 auto", padding: "0 24px 96px" }}>
+          <section key={block.id} style={{ maxWidth: cols > 1 ? 1100 : 900, margin: "0 auto", padding: "0 24px 96px" }}>
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               {block.title && <h2 style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)", fontWeight: 700, letterSpacing: "-0.025em", margin: "0 0 24px" }}>{block.title}</h2>}
-              <div style={{ borderRadius: 20, overflow: "hidden", aspectRatio: "16/9", background: preset.card, border: `1px solid ${preset.border}` }}>
-                <iframe src={toEmbedUrl(block.url)} style={{ width: "100%", height: "100%", border: "none" }} allowFullScreen title={block.title} />
+              <div style={wrapStyle}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},1fr)`, gap: 16 }}>
+                  {videoItems.filter(i => i.url).map(item => (
+                    <div key={item.id}>
+                      <div style={{ borderRadius: 20, overflow: "hidden", position: "relative", paddingBottom: aspectPB(block.aspect), background: preset.card, border: `1px solid ${preset.border}` }}>
+                        <iframe src={toEmbedUrl(item.url)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} allowFullScreen title={item.caption || block.title} />
+                      </div>
+                      {item.caption && <p style={{ fontSize: 13, color: `${preset.text}45`, marginTop: 12, textAlign: "center" }}>{item.caption}</p>}
+                    </div>
+                  ))}
+                </div>
               </div>
-              {block.caption && <p style={{ fontSize: 13, color: `${preset.text}45`, marginTop: 12, textAlign: "center" }}>{block.caption}</p>}
             </motion.div>
           </section>
         );
+      }
 
-      case "gallery": {
+      case "gallery":
         if (!block.images?.length) return null;
-        const cols = block.layout === "row" ? `repeat(${block.images.length}, minmax(200px, 1fr))` : block.layout === "masonry" ? "repeat(auto-fill, minmax(260px, 1fr))" : "repeat(auto-fill, minmax(240px, 1fr))";
         return (
           <section key={block.id} style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px 96px" }}>
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
               {block.title && <h2 style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)", fontWeight: 700, letterSpacing: "-0.025em", margin: "0 0 32px" }}>{block.title}</h2>}
-              <div style={{ display: "grid", gridTemplateColumns: cols, gap: 12, overflowX: block.layout === "row" ? "auto" : undefined }}>
+              <div style={{ display: "grid", gridTemplateColumns: galCols(block), gap: galGap(block.gap), overflowX: block.layout === "row" ? "auto" : undefined }}>
                 {block.images.map(img => (
-                  <div key={img.id} style={{ borderRadius: 14, overflow: "hidden", aspectRatio: "4/3", background: preset.card, border: `1px solid ${preset.border}` }}>
+                  <div key={img.id} style={{ borderRadius: 14, overflow: "hidden", aspectRatio: galAspect(block.imageHeight), background: preset.card, border: `1px solid ${preset.border}` }}>
                     <img src={img.src} alt={img.caption || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   </div>
                 ))}
@@ -148,7 +206,6 @@ export default function PublicPortfolioPage() {
             </motion.div>
           </section>
         );
-      }
 
       case "services":
         if (!block.items?.length) return null;
@@ -252,7 +309,7 @@ export default function PublicPortfolioPage() {
         if (id === "hero") return (
           <section key="hero" id="about" style={{ maxWidth: 800, margin: "0 auto", padding: "100px 24px 80px", textAlign: "center" }}>
             <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-              <div style={{ width: 96, height: 96, borderRadius: 24, overflow: "hidden", background: data.photo ? "transparent" : `linear-gradient(135deg, ${accent}, ${accent}70)`, margin: "0 auto 24px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: preset.bg, boxShadow: `0 0 60px ${accent}40` }}>
+              <div style={{ width: photoSizePx, height: photoSizePx, borderRadius: photoRadius, overflow: "hidden", background: data.photo ? "transparent" : `linear-gradient(135deg, ${accent}, ${accent}70)`, margin: "0 auto 24px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: preset.bg, boxShadow: `0 0 60px ${accent}40` }}>
                 {data.photo ? <img src={data.photo} alt={data.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}
               </div>
               <h1 style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: 700, letterSpacing: "-0.035em", margin: "0 0 12px", lineHeight: 1.1 }}>{data.name}</h1>
@@ -393,8 +450,41 @@ export default function PublicPortfolioPage() {
 
       <footer style={{ borderTop: `1px solid ${preset.border}`, padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <span style={{ fontSize: 13, color: `${preset.text}30`, fontWeight: 600 }}>{initials}.</span>
-        <span style={{ fontSize: 12, color: `${preset.text}25` }}>Built with <span style={{ color: accent }}>Folio.ai</span></span>
       </footer>
+
+      {showBadge && (
+        <a
+          href="https://folio.ai"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            position: "fixed",
+            bottom: 20,
+            right: 20,
+            zIndex: 9999,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 12,
+            fontWeight: 600,
+            color: "#fff",
+            textDecoration: "none",
+            padding: "7px 13px",
+            borderRadius: 999,
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+            letterSpacing: "0.01em",
+            transition: "opacity 0.2s, transform 0.2s",
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.85"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
+        >
+          Built with <span style={{ color: accent, fontWeight: 700 }}>Folio.ai</span>
+        </a>
+      )}
     </div>
   );
 }

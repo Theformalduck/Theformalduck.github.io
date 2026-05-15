@@ -7,9 +7,10 @@ import {
   Globe, Sparkles, Eye, Share2, Palette, Plus, ExternalLink,
   GitBranch, ArrowLeft, Check, X, Layers, Monitor, Smartphone,
   Zap, Save, Trash2, Mail, AtSign, Link2, Edit3, ChevronRight,
-  ImagePlus, Camera, Film, Image as ImageIcon, ChevronUp, ChevronDown,
+  ImagePlus, Camera, Film, Image as ImageIcon, ChevronUp, ChevronDown, Crown,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { PRESETS, FONTS, getPreset, cardBg, cardFilter, pageBackground, type Preset } from "@/lib/presets";
 
@@ -27,9 +28,11 @@ interface ServiceItem  { id: string; name: string; desc: string; price: string }
 interface AwardItem    { id: string; title: string; org: string; year: string }
 interface PressItem    { id: string; publication: string; headline: string; url: string; year: string }
 
-type VideoBlock    = { id: string; type: "video";    title: string; url: string; caption: string }
-type GalleryBlock  = { id: string; type: "gallery";  title: string; images: GalleryImage[]; layout: "grid"|"masonry"|"row" }
-type ReelBlock     = { id: string; type: "reel";     title: string; url: string }
+interface VideoItem { id: string; url: string; caption: string }
+type VideoBlock    = { id: string; type: "video";    title: string; items: VideoItem[]; columns?: 1|2|3; width?: "sm"|"md"|"lg"|"full"; align?: "left"|"center"|"right"; aspect?: "16:9"|"4:3"|"1:1" }
+type GalleryBlock  = { id: string; type: "gallery";  title: string; images: GalleryImage[]; layout: "grid"|"masonry"|"row"; columns?: 1|2|3|4; imageHeight?: "short"|"square"|"tall"; gap?: "sm"|"md"|"lg" }
+interface ReelItem { id: string; url: string }
+type ReelBlock     = { id: string; type: "reel";     title: string; items: ReelItem[]; columns?: 1|2|3; width?: "md"|"lg"|"full"; aspect?: "16:9"|"4:3"|"9:16" }
 type ServicesBlock = { id: string; type: "services"; title: string; items: ServiceItem[] }
 type AwardsBlock   = { id: string; type: "awards";   title: string; items: AwardItem[] }
 type PressBlock    = { id: string; type: "press";    title: string; items: PressItem[] }
@@ -39,7 +42,8 @@ interface PortfolioData {
   portfolioType: string;
   name: string; initials: string; title: string; bio: string;
   email: string; github: string; linkedin: string; twitter: string;
-  photo?: string; accentColor?: string; font?: string;
+  photo?: string; photoSize?: "sm"|"md"|"lg"|"xl"; photoShape?: "circle"|"rounded"|"square";
+  accentColor?: string; font?: string;
   projectLayout?: "grid" | "list";
   projects: Project[];
   skills: SkillGroup[];
@@ -76,7 +80,7 @@ const PORTFOLIO_TYPES: Record<string, PortfolioTypeDef> = {
     label: "Actor / Talent", icon: "🎭", desc: "Reel, headshots, credits",
     defaultOrder: ["hero","__reel__","__gallery__","experience","contact"],
     defaultBlocks: [
-      { id: "__reel__",    type: "reel",    title: "Showreel",  url: "" },
+      { id: "__reel__",    type: "reel",    title: "Showreel",  items: [] },
       { id: "__gallery__", type: "gallery", title: "Headshots", images: [], layout: "grid" },
     ],
   },
@@ -84,7 +88,7 @@ const PORTFOLIO_TYPES: Record<string, PortfolioTypeDef> = {
     label: "Video Editor", icon: "🎬", desc: "Demo reels and project breakdowns",
     defaultOrder: ["hero","__reel__","projects","skills","contact"],
     defaultBlocks: [
-      { id: "__reel__", type: "reel", title: "Demo Reel", url: "" },
+      { id: "__reel__", type: "reel", title: "Demo Reel", items: [] },
     ],
   },
   designer: {
@@ -105,8 +109,8 @@ const PORTFOLIO_TYPES: Record<string, PortfolioTypeDef> = {
     label: "Musician / Artist", icon: "🎵", desc: "Music videos, releases, photos",
     defaultOrder: ["hero","__reel__","__video__","__gallery__","contact"],
     defaultBlocks: [
-      { id: "__reel__",    type: "reel",    title: "Latest Release", url: "" },
-      { id: "__video__",   type: "video",   title: "Music Video",    url: "", caption: "" },
+      { id: "__reel__",    type: "reel",    title: "Latest Release", items: [] },
+      { id: "__video__",   type: "video",   title: "Music Video",    items: [{ id: "__v1__", url: "", caption: "" }] },
       { id: "__gallery__", type: "gallery", title: "Photos",          images: [], layout: "grid" },
     ],
   },
@@ -142,9 +146,9 @@ function toEmbedUrl(url: string): string {
 function makeBlock(type: CustomBlock["type"]): CustomBlock {
   const id = uid();
   switch (type) {
-    case "video":    return { id, type, title: "Featured Video", url: "", caption: "" };
+    case "video":    return { id, type, title: "Featured Video", items: [{ id: uid(), url: "", caption: "" }], columns: 1 };
     case "gallery":  return { id, type, title: "Gallery", images: [], layout: "grid" };
-    case "reel":     return { id, type, title: "Showreel", url: "" };
+    case "reel":     return { id, type, title: "Showreel", items: [{ id: uid(), url: "" }], columns: 1 };
     case "services": return { id, type, title: "Services", items: [] };
     case "awards":   return { id, type, title: "Awards & Recognition", items: [] };
     case "press":    return { id, type, title: "Press", items: [] };
@@ -202,6 +206,22 @@ function PortfolioPreview({ data, preset, mobile }: {
   const label = (txt: string) => (
     <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", color: `${preset.text}35`, textTransform: "uppercase" as const, marginBottom: 20 }}>{txt}</p>
   );
+  const photoSizePx = ({ sm: 48, md: 60, lg: 80, xl: 100 } as Record<string,number>)[data.photoSize || "md"] ?? 60;
+  const photoRadius = ({ circle: "50%", rounded: Math.max(r, 16), square: 4 } as Record<string,string|number>)[data.photoShape || "rounded"] ?? Math.max(r, 16);
+  const aspectPB = (a?: string) => (({ "16:9": "56.25%", "4:3": "75%", "1:1": "100%", "9:16": "177.78%" } as Record<string,string>)[a || "16:9"] ?? "56.25%");
+  const vidWrapStyle = (w?: string, align?: string): React.CSSProperties => {
+    if (!w || w === "full") return {};
+    const widths: Record<string,string> = { sm: "50%", md: "70%", lg: "90%" };
+    const margins: Record<string,string> = { left: "0 auto 0 0", center: "0 auto", right: "0 0 0 auto" };
+    return { width: widths[w] ?? "100%", margin: margins[align || "center"] ?? "0 auto" };
+  };
+  const galCols = (block: GalleryBlock) => {
+    if (mobile) return "repeat(2,1fr)";
+    const n = block.columns ?? (block.layout === "row" ? 4 : 3);
+    return `repeat(${n},1fr)`;
+  };
+  const galAspect = (h?: string) => (({ short: "4/3", square: "1/1", tall: "3/4" } as Record<string,string>)[h || "square"] ?? "1/1");
+  const galGap = (g?: string) => (({ sm: 4, md: 8, lg: 16 } as Record<string,number>)[g || "md"] ?? 8);
 
   return (
     <div style={{ background: pageBackground(preset), minHeight: 600, color: preset.text, fontFamily }}>
@@ -224,7 +244,7 @@ function PortfolioPreview({ data, preset, mobile }: {
         /* ── Built-in sections ── */
         if (id === "hero") return (
           <div key="hero" style={{ textAlign: "center", padding: mobile ? "40px 20px" : "72px 40px 56px" }}>
-            <div style={{ width: 72, height: 72, borderRadius: Math.max(r, 16), overflow: "hidden", margin: "0 auto 20px", display: "flex", alignItems: "center", justifyContent: "center", background: data.photo ? "transparent" : `linear-gradient(135deg, ${accent}, ${accent}80)`, fontSize: 22, fontWeight: 700, color: preset.bg, flexShrink: 0 }}>
+            <div style={{ width: photoSizePx, height: photoSizePx, borderRadius: photoRadius, overflow: "hidden", margin: "0 auto 20px", display: "flex", alignItems: "center", justifyContent: "center", background: data.photo ? "transparent" : `linear-gradient(135deg, ${accent}, ${accent}80)`, fontSize: 22, fontWeight: 700, color: preset.bg, flexShrink: 0 }}>
               {data.photo ? <img src={data.photo} alt={data.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (data.initials || data.name.split(" ").map(w => w[0]).join("").slice(0,2))}
             </div>
             <h1 style={{ fontSize: mobile ? 26 : 38, fontWeight: 700, margin: "0 0 8px", letterSpacing: "-0.025em" }}>{data.name}</h1>
@@ -331,67 +351,95 @@ function PortfolioPreview({ data, preset, mobile }: {
         const block = blockMap[id];
         if (!block) return null;
 
-        if (block.type === "reel") return (
-          <div key={id} style={{ padding: pad }}>
-            {label(block.title)}
-            {block.url ? (
-              <div style={{ borderRadius: r, overflow: "hidden", background: "#000", position: "relative", paddingBottom: "56.25%" }}>
-                <iframe src={toEmbedUrl(block.url)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} allow="autoplay; fullscreen" allowFullScreen title={block.title} />
-              </div>
-            ) : (
-              <div style={{ ...card(), paddingBottom: "56.25%", position: "relative", borderStyle: "dashed" }}>
-                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  <Film style={{ width: 32, height: 32, color: `${preset.text}20` }} />
-                  <span style={{ fontSize: 12, color: `${preset.text}30` }}>Paste a YouTube or Vimeo URL to preview</span>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-
-        if (block.type === "video") return (
-          <div key={id} style={{ padding: pad }}>
-            {label(block.title)}
-            {block.url ? (
-              <div>
-                <div style={{ borderRadius: r, overflow: "hidden", background: "#000", position: "relative", paddingBottom: "56.25%" }}>
-                  <iframe src={toEmbedUrl(block.url)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} allow="autoplay; fullscreen" allowFullScreen title={block.title} />
-                </div>
-                {block.caption && <p style={{ fontSize: 12, color: `${preset.text}40`, textAlign: "center", marginTop: 12 }}>{block.caption}</p>}
-              </div>
-            ) : (
-              <div style={{ ...card(), height: 140, display: "flex", alignItems: "center", justifyContent: "center", borderStyle: "dashed" }}>
-                <span style={{ fontSize: 12, color: `${preset.text}30` }}>Add a YouTube or Vimeo URL</span>
-              </div>
-            )}
-          </div>
-        );
-
-        if (block.type === "gallery") {
-          const cols = mobile ? "repeat(2,1fr)" : block.layout === "row" ? "repeat(4,1fr)" : "repeat(3,1fr)";
+        if (block.type === "reel") {
+          const items = block.items || [];
+          const cols = block.columns ?? 1;
+          const wrapStyle: React.CSSProperties = cols === 1 && block.width && block.width !== "full"
+            ? { width: ({ md: "75%", lg: "90%" } as Record<string,string>)[block.width] ?? "100%", margin: "0 auto" }
+            : {};
           return (
             <div key={id} style={{ padding: pad }}>
               {label(block.title)}
-              {block.images.length > 0 ? (
-                <div style={{ display: "grid", gridTemplateColumns: cols, gap: 8 }}>
-                  {block.images.map((img, i) => (
-                    <div key={img.id} style={{ borderRadius: Math.min(r, 12), overflow: "hidden", aspectRatio: block.layout === "masonry" && i % 3 === 1 ? "3/4" : "4/3", background: preset.card }}>
-                      <img src={img.src} alt={img.caption || `Photo ${i+1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <div style={wrapStyle}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},1fr)`, gap: 12 }}>
+                  {items.length > 0 ? items.map(item =>
+                    item.url ? (
+                      <div key={item.id} style={{ borderRadius: r, overflow: "hidden", background: "#000", position: "relative", paddingBottom: aspectPB(block.aspect) }}>
+                        <iframe src={toEmbedUrl(item.url)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} allow="autoplay; fullscreen" allowFullScreen title={block.title} />
+                      </div>
+                    ) : (
+                      <div key={item.id} style={card({ border: `1px dashed ${preset.border}`, paddingBottom: aspectPB(block.aspect), position: "relative" })}>
+                        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                          <Film style={{ width: 32, height: 32, color: `${preset.text}20` }} />
+                          <span style={{ fontSize: 12, color: `${preset.text}30` }}>Paste a YouTube or Vimeo URL to preview</span>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div style={card({ border: `1px dashed ${preset.border}`, paddingBottom: aspectPB(block.aspect), position: "relative" })}>
+                      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                        <Film style={{ width: 32, height: 32, color: `${preset.text}20` }} />
+                        <span style={{ fontSize: 12, color: `${preset.text}30` }}>Paste a YouTube or Vimeo URL to preview</span>
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: mobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: 8 }}>
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} style={{ ...card(), aspectRatio: "4/3", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <ImageIcon style={{ width: 20, height: 20, color: `${preset.text}20` }} />
-                    </div>
-                  ))}
-                </div>
-              )}
+              </div>
             </div>
           );
         }
+
+        if (block.type === "video") {
+          const items = block.items || [];
+          const cols = block.columns ?? 1;
+          const wrapStyle = cols === 1 ? vidWrapStyle(block.width, block.align) : {};
+          return (
+            <div key={id} style={{ padding: pad }}>
+              {label(block.title)}
+              <div style={wrapStyle}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},1fr)`, gap: 12 }}>
+                  {items.map(item => (
+                    item.url ? (
+                      <div key={item.id}>
+                        <div style={{ borderRadius: r, overflow: "hidden", background: "#000", position: "relative", paddingBottom: aspectPB(block.aspect) }}>
+                          <iframe src={toEmbedUrl(item.url)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }} allow="autoplay; fullscreen" allowFullScreen title={item.caption || block.title} />
+                        </div>
+                        {item.caption && <p style={{ fontSize: 11, color: `${preset.text}40`, textAlign: "center", marginTop: 8 }}>{item.caption}</p>}
+                      </div>
+                    ) : (
+                      <div key={item.id} style={card({ border: `1px dashed ${preset.border}`, height: 100, display: "flex", alignItems: "center", justifyContent: "center" })}>
+                        <span style={{ fontSize: 11, color: `${preset.text}30` }}>Add a YouTube or Vimeo URL</span>
+                      </div>
+                    )
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        if (block.type === "gallery") return (
+          <div key={id} style={{ padding: pad }}>
+            {label(block.title)}
+            {block.images.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: galCols(block), gap: galGap(block.gap) }}>
+                {block.images.map((img) => (
+                  <div key={img.id} style={{ borderRadius: Math.min(r, 12), overflow: "hidden", aspectRatio: galAspect(block.imageHeight), background: preset.card }}>
+                    <img src={img.src} alt={img.caption || ""} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: galCols(block), gap: galGap(block.gap) }}>
+                {[...Array(block.columns ?? 4)].map((_, i) => (
+                  <div key={i} style={{ ...card(), aspectRatio: galAspect(block.imageHeight), display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <ImageIcon style={{ width: 20, height: 20, color: `${preset.text}20` }} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
 
         if (block.type === "services") return (
           <div key={id} style={{ padding: pad }}>
@@ -455,29 +503,130 @@ function PortfolioPreview({ data, preset, mobile }: {
    BLOCK EDITORS
 ══════════════════════════════════════════════ */
 function VideoBlockEditor({ block, onChange }: { block: VideoBlock; onChange: (b: VideoBlock) => void }) {
+  const btn = (active: boolean) => `flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${active ? "bg-white/[0.07] text-white/80 border border-white/[0.1]" : "bg-white/[0.02] text-white/35 border border-transparent hover:text-white/55"}`;
+  const items = block.items || [];
+  const updItem = (itemId: string, k: keyof VideoItem, v: string) =>
+    onChange({ ...block, items: items.map(i => i.id === itemId ? { ...i, [k]: v } : i) });
+  const delItem = (itemId: string) => onChange({ ...block, items: items.filter(i => i.id !== itemId) });
+  const addItem = () => onChange({ ...block, items: [...items, { id: uid(), url: "", caption: "" }] });
+  const cols = block.columns ?? 1;
   return (
     <div className="space-y-3">
       <Field label="Section Title"><input value={block.title} onChange={e => onChange({ ...block, title: e.target.value })} className={inp} /></Field>
-      <Field label="YouTube or Vimeo URL">
-        <input value={block.url} onChange={e => onChange({ ...block, url: e.target.value })} placeholder="https://youtube.com/watch?v=..." className={inp} />
-      </Field>
-      <Field label="Caption (optional)">
-        <input value={block.caption} onChange={e => onChange({ ...block, caption: e.target.value })} placeholder="Brief description…" className={inp} />
-      </Field>
-      {block.url && <div className="text-[10px] text-emerald-400 flex items-center gap-1"><Check className="w-3 h-3" /> Video URL detected</div>}
+      <div>
+        <label className="text-[10px] text-white/35 mb-1.5 block">Layout</label>
+        <div className="flex gap-1">
+          {([1,2,3] as const).map(n => (
+            <button key={n} onClick={() => onChange({ ...block, columns: n })} className={btn(cols===n)}>
+              {n===1?"Single":n===2?"Side by side":"3 columns"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {items.map((item, i) => (
+        <div key={item.id} className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-white/35">Video {i+1}</span>
+            {items.length > 1 && <button onClick={() => delItem(item.id)} className="text-red-400/50 hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></button>}
+          </div>
+          <input value={item.url} onChange={e => updItem(item.id,"url",e.target.value)} placeholder="https://youtube.com/watch?v=..." className={inpSm} />
+          <input value={item.caption} onChange={e => updItem(item.id,"caption",e.target.value)} placeholder="Caption (optional)" className={inpSm} />
+          {item.url && <div className="text-[10px] text-emerald-400 flex items-center gap-1"><Check className="w-3 h-3" /> URL detected</div>}
+        </div>
+      ))}
+      <AddBtn onClick={addItem} label="Add video" />
+      <div>
+        <label className="text-[10px] text-white/35 mb-1.5 block">Aspect Ratio</label>
+        <div className="flex gap-1">
+          {(["16:9","4:3","1:1"] as const).map(a => (
+            <button key={a} onClick={() => onChange({ ...block, aspect: a })} className={btn((block.aspect||"16:9")===a)}>{a}</button>
+          ))}
+        </div>
+      </div>
+      {cols === 1 && (
+        <>
+          <div>
+            <label className="text-[10px] text-white/35 mb-1.5 block">Width</label>
+            <div className="flex gap-1">
+              {(["sm","md","lg","full"] as const).map(w => (
+                <button key={w} onClick={() => onChange({ ...block, width: w })} className={btn((block.width||"full")===w)}>
+                  {w==="sm"?"Compact":w==="md"?"Medium":w==="lg"?"Wide":"Full"}
+                </button>
+              ))}
+            </div>
+          </div>
+          {block.width && block.width !== "full" && (
+            <div>
+              <label className="text-[10px] text-white/35 mb-1.5 block">Alignment</label>
+              <div className="flex gap-1">
+                {(["left","center","right"] as const).map(a => (
+                  <button key={a} onClick={() => onChange({ ...block, align: a })} className={btn((block.align||"center")===a)}>
+                    {a.charAt(0).toUpperCase()+a.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
 function ReelBlockEditor({ block, onChange }: { block: ReelBlock; onChange: (b: ReelBlock) => void }) {
+  const btn = (active: boolean) => `flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${active ? "bg-white/[0.07] text-white/80 border border-white/[0.1]" : "bg-white/[0.02] text-white/35 border border-transparent hover:text-white/55"}`;
+  const items = block.items || [];
+  const cols = block.columns ?? 1;
+  const updItem = (itemId: string, url: string) =>
+    onChange({ ...block, items: items.map(i => i.id === itemId ? { ...i, url } : i) });
+  const delItem = (itemId: string) => onChange({ ...block, items: items.filter(i => i.id !== itemId) });
+  const addItem = () => onChange({ ...block, items: [...items, { id: uid(), url: "" }] });
   return (
     <div className="space-y-3">
       <Field label="Reel Title"><input value={block.title} onChange={e => onChange({ ...block, title: e.target.value })} className={inp} /></Field>
-      <Field label="YouTube or Vimeo URL">
-        <input value={block.url} onChange={e => onChange({ ...block, url: e.target.value })} placeholder="https://youtube.com/watch?v=..." className={inp} />
-        <p className="text-[10px] text-white/25 mt-1">Displayed full-width as your hero reel</p>
-      </Field>
-      {block.url && <div className="text-[10px] text-emerald-400 flex items-center gap-1"><Check className="w-3 h-3" /> Ready</div>}
+      <div>
+        <label className="text-[10px] text-white/35 mb-1.5 block">Layout</label>
+        <div className="flex gap-1">
+          {([1,2,3] as const).map(n => (
+            <button key={n} onClick={() => onChange({ ...block, columns: n })} className={btn(cols===n)}>
+              {n===1?"Single":n===2?"Side by side":"3 columns"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {items.map((item, i) => (
+        <div key={item.id} className="rounded-xl bg-white/[0.025] border border-white/[0.06] p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-white/35">Reel {i+1}</span>
+            {items.length > 1 && <button onClick={() => delItem(item.id)} className="text-red-400/50 hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></button>}
+          </div>
+          <input value={item.url} onChange={e => updItem(item.id, e.target.value)} placeholder="https://youtube.com/watch?v=..." className={inpSm} />
+          {item.url && <div className="text-[10px] text-emerald-400 flex items-center gap-1"><Check className="w-3 h-3" /> Ready</div>}
+        </div>
+      ))}
+      <AddBtn onClick={addItem} label="Add reel" />
+      <div>
+        <label className="text-[10px] text-white/35 mb-1.5 block">Aspect Ratio</label>
+        <div className="flex gap-1">
+          {(["16:9","4:3","9:16"] as const).map(a => (
+            <button key={a} onClick={() => onChange({ ...block, aspect: a })} className={btn((block.aspect||"16:9")===a)}>
+              {a==="9:16"?"Portrait":a}
+            </button>
+          ))}
+        </div>
+      </div>
+      {cols === 1 && (
+        <div>
+          <label className="text-[10px] text-white/35 mb-1.5 block">Width</label>
+          <div className="flex gap-1">
+            {(["md","lg","full"] as const).map(w => (
+              <button key={w} onClick={() => onChange({ ...block, width: w })} className={btn((block.width||"full")===w)}>
+                {w==="md"?"Standard":w==="lg"?"Wide":"Full"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -510,6 +659,41 @@ function GalleryBlockEditor({ block, onChange }: { block: GalleryBlock; onChange
               {l === "grid" ? "⊞ Grid" : l === "masonry" ? "⫿ Masonry" : "↔ Row"}
             </button>
           ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="text-[10px] text-white/35 mb-1 block">Columns</label>
+          <div className="flex gap-1">
+            {([1,2,3,4] as const).map(n => (
+              <button key={n} onClick={() => onChange({ ...block, columns: n })}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${(block.columns??3)===n ? "bg-white/[0.07] text-white/80 border border-white/[0.1]" : "bg-white/[0.02] text-white/35 border border-transparent hover:text-white/55"}`}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="text-[10px] text-white/35 mb-1 block">Image Height</label>
+          <div className="flex gap-1">
+            {(["short","square","tall"] as const).map(h => (
+              <button key={h} onClick={() => onChange({ ...block, imageHeight: h })}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${(block.imageHeight||"square")===h ? "bg-white/[0.07] text-white/80 border border-white/[0.1]" : "bg-white/[0.02] text-white/35 border border-transparent hover:text-white/55"}`}>
+                {h.charAt(0).toUpperCase()+h.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="text-[10px] text-white/35 mb-1 block">Gap</label>
+          <div className="flex gap-1">
+            {(["sm","md","lg"] as const).map(g => (
+              <button key={g} onClick={() => onChange({ ...block, gap: g })}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${(block.gap||"md")===g ? "bg-white/[0.07] text-white/80 border border-white/[0.1]" : "bg-white/[0.02] text-white/35 border border-transparent hover:text-white/55"}`}>
+                {g==="sm"?"Tight":g==="md"?"Normal":"Loose"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
@@ -646,6 +830,32 @@ function HeroEditor({ data, onChange }: { data: PortfolioData; onChange: (d: Par
         </div>
         <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
       </div>
+      {data.photo && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] text-white/35 mb-1.5 block">Photo Size</label>
+            <div className="flex gap-1">
+              {(["sm","md","lg","xl"] as const).map(s => (
+                <button key={s} onClick={() => onChange({ photoSize: s })}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${(data.photoSize||"md")===s ? "bg-white/[0.07] text-white/80 border border-white/[0.1]" : "bg-white/[0.02] text-white/35 border border-transparent hover:text-white/55"}`}>
+                  {s.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] text-white/35 mb-1.5 block">Photo Shape</label>
+            <div className="flex gap-1">
+              {(["circle","rounded","square"] as const).map(s => (
+                <button key={s} onClick={() => onChange({ photoShape: s })}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${(data.photoShape||"rounded")===s ? "bg-white/[0.07] text-white/80 border border-white/[0.1]" : "bg-white/[0.02] text-white/35 border border-transparent hover:text-white/55"}`}>
+                  {s.charAt(0).toUpperCase()+s.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         {([{ label:"Full Name", key:"name" as const },{ label:"Initials", key:"initials" as const },{ label:"Job Title", key:"title" as const }]).map(f => (
           <div key={f.key} className={f.key === "title" ? "col-span-2" : ""}>
@@ -891,13 +1101,27 @@ export default function PortfolioEditorPage() {
   const [saved, setSaved] = useState(false);
   const [showAddBlock, setShowAddBlock] = useState(false);
   const [showTypePicker, setShowTypePicker] = useState(false);
+  const [isPro, setIsPro] = useState(false);
+  const router = useRouter();
 
   const currentPreset = getPreset(activeTheme);
 
   const [loaded, setLoaded] = useState(false);
 
+  const migrateBlocks = (blocks: CustomBlock[]): CustomBlock[] => blocks.map(b => {
+    if (b.type === "video" && !("items" in b)) {
+      const old = b as unknown as { id: string; type: "video"; title: string; url: string; caption: string };
+      return { id: old.id, type: "video", title: old.title, items: [{ id: uid(), url: old.url || "", caption: old.caption || "" }], columns: 1 } as VideoBlock;
+    }
+    if (b.type === "reel" && !("items" in b)) {
+      const old = b as unknown as { id: string; type: "reel"; title: string; url: string };
+      return { id: old.id, type: "reel", title: old.title, items: [{ id: uid(), url: old.url || "" }], columns: 1 } as ReelBlock;
+    }
+    return b;
+  });
+
   const applyStored = (p: { data?: PortfolioData; theme?: string; subdomain?: string; published?: boolean }) => {
-    if (p.data) setData({ ...DEFAULT, ...p.data, customBlocks: p.data.customBlocks || [], sectionOrder: p.data.sectionOrder || DEFAULT.sectionOrder });
+    if (p.data) setData({ ...DEFAULT, ...p.data, customBlocks: migrateBlocks(p.data.customBlocks || []), sectionOrder: p.data.sectionOrder || DEFAULT.sectionOrder });
     if (p.theme) setActiveTheme(p.theme);
     if (p.subdomain) setSubdomain(p.subdomain);
     if (p.published) setPublished(p.published);
@@ -916,15 +1140,19 @@ export default function PortfolioEditorPage() {
         if (stored) { try { applyStored(JSON.parse(stored)); } catch {} }
       })
       .finally(() => setLoaded(true));
+    fetch("/api/user/subscription")
+      .then(r => r.json())
+      .then(json => setIsPro(json.isPro === true))
+      .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveToApi = (d = data, theme = activeTheme, sub = subdomain, pub = published) => {
-    fetch("/api/user/portfolio", {
+    localStorage.setItem("folio_portfolio", JSON.stringify({ data: d, theme, subdomain: sub, published: pub }));
+    return fetch("/api/user/portfolio", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ data: d, theme, subdomain: sub, published: pub }),
     }).catch(() => {});
-    localStorage.setItem("folio_portfolio", JSON.stringify({ data: d, theme, subdomain: sub, published: pub }));
   };
 
   /* Auto-save after initial load */
@@ -999,8 +1227,14 @@ export default function PortfolioEditorPage() {
     saveToApi(data, activeTheme, subdomain, false);
     toast.success("Portfolio unpublished — it's now private");
   };
-  const handlePreview = () => {
-    saveToApi(); window.open("/portfolio/preview", "_blank");
+  const handlePreview = async () => {
+    if (!published) {
+      setPublished(true);
+      await saveToApi(data, activeTheme, subdomain, true);
+    } else {
+      await saveToApi();
+    }
+    window.open(`/p/${subdomain}`, "_blank");
   };
   const handleShare = async () => {
     try { await navigator.clipboard.writeText(`${window.location.origin}/p/${subdomain}`); toast.success("Link copied!"); }
@@ -1075,9 +1309,9 @@ export default function PortfolioEditorPage() {
       {showAddBlock  && <AddBlockModal   onAdd={addBlock}  onClose={() => setShowAddBlock(false)} />}
       {showTypePicker && <TypePickerModal current={data.portfolioType} onSelect={applyType} onClose={() => setShowTypePicker(false)} />}
 
-      <div className="flex-1 ml-[220px] flex flex-col h-screen">
+      <div className="flex-1 md:ml-[220px] flex flex-col h-screen">
         {/* Toolbar */}
-        <div className="h-14 border-b border-white/[0.05] flex items-center gap-3 px-4 bg-white/[0.03] flex-shrink-0">
+        <div className="h-14 border-b border-white/[0.05] flex items-center gap-2 px-4 pl-14 md:pl-4 bg-white/[0.03] flex-shrink-0">
           <Link href="/dashboard" className="flex items-center gap-1.5 text-sm text-white/35 hover:text-white/55 transition-colors mr-2">
             <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
           </Link>
@@ -1085,29 +1319,26 @@ export default function PortfolioEditorPage() {
           <Globe className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-white/90">Portfolio Editor</span>
           {published && <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">● Live</span>}
-          <div className="ml-auto flex items-center gap-2">
-            <div className="flex items-center gap-0.5 bg-white/[0.02] rounded-lg p-0.5">
+          <div className="ml-auto flex items-center gap-1.5">
+            <div className="hidden sm:flex items-center gap-0.5 bg-white/[0.02] rounded-lg p-0.5">
               {([["desktop", Monitor], ["mobile", Smartphone]] as const).map(([mode, Icon]) => (
                 <button key={mode} onClick={() => setViewMode(mode)} className={`px-2 py-1.5 rounded-md transition-all ${viewMode === mode ? "bg-white/[0.08] text-white/90" : "text-white/35 hover:text-white/55"}`}>
                   <Icon className="w-3.5 h-3.5" />
                 </button>
               ))}
             </div>
-            <button onClick={handlePreview} title="Preview your portfolio (no publishing needed)" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.02] border border-white/[0.06] text-white/45 hover:bg-white/[0.06] transition-all"><Eye className="w-3.5 h-3.5" /> Preview</button>
-            {published && (
-              <a href={`/p/${subdomain}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/15 transition-all"><ExternalLink className="w-3.5 h-3.5" /> View Live</a>
-            )}
-            <button onClick={handleShare}   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.02] border border-white/[0.06] text-white/45 hover:bg-white/[0.06] transition-all"><Share2 className="w-3.5 h-3.5" /> Share</button>
+            <button onClick={handlePreview} title="View your live portfolio" className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.02] border border-white/[0.06] text-white/45 hover:bg-white/[0.06] transition-all"><Eye className="w-3.5 h-3.5" /> View Live</button>
+            <button onClick={handleShare}   className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.02] border border-white/[0.06] text-white/45 hover:bg-white/[0.06] transition-all"><Share2 className="w-3.5 h-3.5" /> Share</button>
             <button onClick={handleSave}    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${saved ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-white/[0.02] border-white/[0.06] text-white/45 hover:bg-white/[0.06]"}`}>
               {saved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}{saved ? "Saved" : "Save"}
             </button>
             {published ? (
-              <button onClick={handleUnpublish} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium bg-white/[0.04] border border-white/[0.1] text-white/55 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 transition-all">
+              <button onClick={handleUnpublish} className="hidden sm:flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium bg-white/[0.04] border border-white/[0.1] text-white/55 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400 transition-all">
                 <Globe className="w-3.5 h-3.5" /> Unpublish
               </button>
             ) : (
-              <button onClick={handlePublish} className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:opacity-90 transition-opacity">
-                <Zap className="w-3.5 h-3.5" /> Publish
+              <button onClick={handlePublish} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:opacity-90 transition-opacity">
+                <Zap className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Publish</span>
               </button>
             )}
           </div>
@@ -1115,7 +1346,7 @@ export default function PortfolioEditorPage() {
 
         <div className="flex flex-1 overflow-hidden">
           {/* LEFT PANEL */}
-          <div className="w-60 border-r border-white/[0.05] bg-white/[0.03] flex-shrink-0 flex flex-col">
+          <div className="w-full md:w-60 border-r border-white/[0.05] bg-white/[0.03] md:flex-shrink-0 flex flex-col overflow-y-auto md:overflow-visible">
             <div className="flex border-b border-white/[0.05] flex-shrink-0">
               {([["design","Design",Palette],["content","Content",Edit3]] as const).map(([id,label,Icon]) => (
                 <button key={id} onClick={() => setLeftTab(id)} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-all ${leftTab===id ? "text-white border-b-2 border-white/40" : "text-white/35 hover:text-white/55"}`}>
@@ -1144,28 +1375,45 @@ export default function PortfolioEditorPage() {
                   <div>
                     <div className="text-[10px] text-white/35 uppercase tracking-wider font-medium mb-3 px-1">Design Preset</div>
                     <div className="grid grid-cols-2 gap-2">
-                      {PRESETS.map(p => (
-                        <button key={p.id} onClick={() => setActiveTheme(p.id)}
-                          className={`relative rounded-xl overflow-hidden text-left transition-all group ${activeTheme === p.id ? "ring-2 ring-white/40" : "hover:ring-1 hover:ring-white/20"}`}
-                          style={{ background: p.bgGradient ? `${p.bgGradient}, ${p.bg}` : p.bg, padding: "10px 10px 8px" }}>
-                          {/* Mini card mockup */}
-                          <div style={{
-                            background: p.cardStyle === "glass" ? "rgba(255,255,255,0.07)" : p.cardStyle === "outlined" ? "transparent" : p.card,
-                            border: `1px solid ${p.border}`,
-                            borderRadius: Math.min(p.radius, 8),
-                            padding: "6px 8px",
-                            marginBottom: 7,
-                          }}>
-                            <div style={{ height: 4, width: "65%", background: p.text, opacity: 0.55, borderRadius: 2, marginBottom: 4 }} />
-                            <div style={{ height: 3, width: "40%", background: p.accent, opacity: 0.8, borderRadius: 2 }} />
-                          </div>
-                          {/* Label row */}
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: 10, fontWeight: 600, color: p.text, opacity: 0.8, fontFamily: p.font === "mono" ? "monospace" : p.font === "serif" ? "Georgia,serif" : "inherit" }}>{p.label}</span>
-                            {activeTheme === p.id && <div style={{ width: 6, height: 6, borderRadius: "50%", background: p.accent }} />}
-                          </div>
-                        </button>
-                      ))}
+                      {PRESETS.map(p => {
+                        const locked = p.pro && !isPro;
+                        return (
+                          <button key={p.id}
+                            onClick={() => locked ? router.push("/settings?tab=billing") : setActiveTheme(p.id)}
+                            className={`relative rounded-xl overflow-hidden text-left transition-all group ${activeTheme === p.id ? "ring-2 ring-white/40" : locked ? "opacity-60 hover:opacity-80" : "hover:ring-1 hover:ring-white/20"}`}
+                            style={{ background: p.bgGradient ? `${p.bgGradient}, ${p.bg}` : p.bg, padding: "10px 10px 8px" }}
+                          >
+                            {/* Mini card mockup */}
+                            <div style={{
+                              background: p.cardStyle === "glass" ? "rgba(255,255,255,0.07)" : p.cardStyle === "outlined" ? "transparent" : p.card,
+                              border: `1px solid ${p.border}`,
+                              borderRadius: Math.min(p.radius, 8),
+                              padding: "6px 8px",
+                              marginBottom: 7,
+                            }}>
+                              <div style={{ height: 4, width: "65%", background: p.text, opacity: 0.55, borderRadius: 2, marginBottom: 4 }} />
+                              <div style={{ height: 3, width: "40%", background: p.accent, opacity: 0.8, borderRadius: 2 }} />
+                            </div>
+                            {/* Label row */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: p.text, opacity: 0.8, fontFamily: p.font === "mono" ? "monospace" : p.font === "serif" ? "Georgia,serif" : "inherit" }}>{p.label}</span>
+                              {activeTheme === p.id
+                                ? <div style={{ width: 6, height: 6, borderRadius: "50%", background: p.accent }} />
+                                : locked && <Crown style={{ width: 9, height: 9, color: "#fbbf24", opacity: 0.8 }} />
+                              }
+                            </div>
+                            {/* Lock overlay on hover for pro themes */}
+                            {locked && (
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl" style={{ background: "rgba(0,0,0,0.55)" }}>
+                                <div className="flex flex-col items-center gap-1">
+                                  <Crown style={{ width: 14, height: 14, color: "#fbbf24" }} />
+                                  <span style={{ fontSize: 9, fontWeight: 700, color: "#fbbf24" }}>Pro Only</span>
+                                </div>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -1273,14 +1521,27 @@ export default function PortfolioEditorPage() {
                       <Plus className="w-3.5 h-3.5" /> Add Block
                     </button>
                   </div>
+
+                  {/* Mobile section editor - shown below section list on small screens */}
+                  <div className="md:hidden mt-4 pt-4 border-t border-white/[0.06]">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-sm font-semibold text-white/80">{getSectionMeta(editSection).label}</span>
+                      <span className="text-[10px] text-white/35 ml-auto">Auto-saved</span>
+                    </div>
+                    <AnimatePresence mode="wait">
+                      <motion.div key={editSection} initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-6 }}>
+                        {renderEditor()}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* CENTER */}
+          {/* CENTER - hidden on mobile (left panel takes full width) */}
           {leftTab === "content" ? (
-            <div className="flex flex-1 overflow-hidden">
+            <div className="hidden md:flex flex-1 overflow-hidden">
               <div className="w-80 border-r border-white/[0.05] bg-[#0e0e1a] overflow-y-auto flex-shrink-0">
                 <div className="p-4">
                   <div className="flex items-center gap-2 mb-4">
@@ -1296,10 +1557,10 @@ export default function PortfolioEditorPage() {
               </div>
               {preview}
             </div>
-          ) : preview}
+          ) : <div className="hidden md:flex flex-1">{preview}</div>}
 
-          {/* RIGHT PANEL */}
-          <div className="w-56 border-l border-white/[0.05] bg-white/[0.03] flex-shrink-0 overflow-y-auto">
+          {/* RIGHT PANEL - desktop only */}
+          <div className="hidden md:block w-56 border-l border-white/[0.05] bg-white/[0.03] flex-shrink-0 overflow-y-auto">
             <div className="p-4 space-y-5">
               <div>
                 <div className="text-[10px] text-white/35 uppercase tracking-wider font-medium mb-3">AI Content</div>

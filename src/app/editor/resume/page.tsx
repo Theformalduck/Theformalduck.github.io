@@ -91,39 +91,12 @@ const RESUME_TEMPLATES: TemplateStyle[] = [
 ];
 
 const DEFAULT: ResumeData = {
-  name: "John Doe", title: "Software Engineer", email: "john@example.com",
-  phone: "+1 (555) 000-0000", location: "San Francisco, CA", website: "johndev.io",
-  linkedin: "linkedin.com/in/johndoe", github: "github.com/johndoe",
-  summary: "Senior Frontend Engineer with 4+ years building high-performance web applications. Specialising in React, TypeScript, and distributed systems. Passionate about developer experience and shipping products users love.",
-  experience: [
-    {
-      id: uid(), company: "Acme Corp", role: "Senior Frontend Engineer", period: "Jan 2023 – Present",
-      bullets: [
-        { id: uid(), text: "Engineered a real-time analytics dashboard serving 50+ retail locations, reducing manual reporting time by 73%." },
-        { id: uid(), text: "Led migration from REST to GraphQL, improving API response times by 45% and reducing payload size by 60%." },
-        { id: uid(), text: "Mentored 3 junior engineers via weekly code reviews, establishing team coding standards." },
-      ],
-    },
-    {
-      id: uid(), company: "Startup XYZ", role: "Frontend Developer", period: "Mar 2021 – Dec 2022",
-      bullets: [
-        { id: uid(), text: "Built and maintained 15+ React components used across 4 product lines." },
-        { id: uid(), text: "Implemented CI/CD pipeline with GitHub Actions, cutting deploy time by 80%." },
-      ],
-    },
-  ],
-  education: [
-    { id: uid(), school: "University of California, Berkeley", degree: "B.S. Computer Science", period: "2017 – 2021", gpa: "3.8" },
-  ],
-  skills: [
-    { id: uid(), category: "Frontend",  items: ["React", "TypeScript", "Next.js", "Tailwind CSS"] },
-    { id: uid(), category: "Backend",   items: ["Node.js", "Python", "PostgreSQL", "Redis"] },
-    { id: uid(), category: "DevOps",    items: ["Docker", "AWS", "CI/CD", "Kubernetes"] },
-  ],
-  projects: [
-    { id: uid(), name: "AI Analytics Dashboard", desc: "Real-time data visualization platform serving 50+ enterprise clients with WebSocket streaming.", link: "github.com/johndoe/analytics", tags: "React, D3.js, Node.js, WebSockets" },
-    { id: uid(), name: "Open-Source UI Library", desc: "Component library with 40+ accessible React components. 2K+ GitHub stars.", link: "github.com/johndoe/ui-lib", tags: "TypeScript, Storybook, Jest" },
-  ],
+  name: "", title: "", email: "", phone: "", location: "", website: "", linkedin: "", github: "",
+  summary: "",
+  experience: [],
+  education: [],
+  skills: [],
+  projects: [],
 };
 
 /* ── Resume document renderer (used in preview + print) ── */
@@ -269,6 +242,8 @@ function ResumeEditorInner() {
   const [aiLoading, setAiLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [templateId, setTemplateId] = useState("classic");
+  const [pdfExportData, setPdfExportData] = useState<{ used: number; limit: number; isPro: boolean; canExport: boolean } | null>(null);
+  const [aiUsage, setAiUsage] = useState<{ used: number; limit: number; isPro: boolean } | null>(null);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
@@ -278,14 +253,29 @@ function ResumeEditorInner() {
   const [loaded, setLoaded] = useState(false);
   const userEdited = useRef(false);
 
+  /* Load usage stats */
+  useEffect(() => {
+    fetch("/api/user/pdf-export")
+      .then(r => r.json())
+      .then(json => setPdfExportData(json))
+      .catch(() => {});
+    fetch("/api/user/ai-usage")
+      .then(r => r.json())
+      .then(json => setAiUsage(json))
+      .catch(() => {});
+  }, []);
+
   /* Load resume by ID, or find/create one if no ID in URL */
   useEffect(() => {
     if (resumeId) {
       fetch(`/api/user/resumes/${resumeId}`)
         .then(r => r.json())
         .then(json => {
-          if (json.data) setData(json.data);
-          /* if data is null (brand-new resume), DEFAULT stays — user fills it in */
+          if (json.data) {
+            const { _templateId, ...resumeData } = json.data;
+            setData(resumeData);
+            if (_templateId) setTemplateId(_templateId);
+          }
         })
         .catch(() => {})
         .finally(() => setLoaded(true));
@@ -300,7 +290,7 @@ function ResumeEditorInner() {
             const res = await fetch("/api/user/resumes", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ label: "My Resume", data: DEFAULT }),
+              body: JSON.stringify({ label: "My Resume" }),
             });
             const created = await res.json();
             if (created.id) router.replace(`/editor/resume?id=${created.id}`);
@@ -319,12 +309,12 @@ function ResumeEditorInner() {
     fetch(apiUrl, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data }),
+      body: JSON.stringify({ data: { ...data, _templateId: templateId } }),
     }).catch(() => {});
     setSaved(true);
     toast.success("Resume saved!");
     setTimeout(() => setSaved(false), 2000);
-  }, [data, apiUrl]);
+  }, [data, templateId, apiUrl]);
 
   /* Auto-save on data change (after initial load, only once user has edited) */
   useEffect(() => {
@@ -333,11 +323,11 @@ function ResumeEditorInner() {
       fetch(apiUrl, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({ data: { ...data, _templateId: templateId } }),
       }).catch(() => {});
     }, 800);
     return () => clearTimeout(id);
-  }, [data, loaded, apiUrl]);
+  }, [data, templateId, loaded, apiUrl]);
 
   /* Field helpers */
   const edit = useCallback((fn: (prev: ResumeData) => ResumeData) => {
@@ -384,8 +374,10 @@ function ResumeEditorInner() {
         }),
       });
       const json = await res.json();
+      if (handleAILimitError(json)) { toast.dismiss(toastId); return; }
       if (json.error) throw new Error(json.error);
       setProjSugg({ projId, text: json.text });
+      setAiUsage(u => u ? { ...u, used: Math.min((u.used ?? 0) + 1, u.limit) } : u);
       toast.dismiss(toastId);
       toast.success("AI suggestion ready ✨");
     } catch {
@@ -422,6 +414,19 @@ function ResumeEditorInner() {
   const deleteProj = (id: string) => edit(p => ({ ...p, projects: p.projects.filter(pr => pr.id !== id) }));
   const addProj = () => edit(p => ({ ...p, projects: [...p.projects, { id: uid(), name: "", desc: "", link: "", tags: "" }] }));
 
+  const handleAILimitError = (json: { limitReached?: boolean; used?: number; limit?: number }) => {
+    if (json.limitReached) {
+      toast.error(`Free plan: ${json.used ?? 5}/${json.limit ?? 5} AI uses this month. Upgrade for unlimited.`, {
+        action: { label: "Upgrade", onClick: () => window.location.href = "/settings?tab=billing" },
+        duration: 7000,
+      });
+      // Refresh usage display
+      fetch("/api/user/ai-usage").then(r => r.json()).then(j => setAiUsage(j)).catch(() => {});
+      return true;
+    }
+    return false;
+  };
+
   /* AI & export */
   const aiEnhance = async (expId: string, bulletId: string) => {
     const exp = data.experience.find(e => e.id === expId);
@@ -443,8 +448,10 @@ function ResumeEditorInner() {
         }),
       });
       const json = await res.json();
+      if (handleAILimitError(json)) { toast.dismiss(toastId); return; }
       if (json.error) throw new Error(json.error);
       setSugg({ entryId: expId, bulletId, text: json.text });
+      setAiUsage(u => u ? { ...u, used: Math.min((u.used ?? 0) + 1, u.limit) } : u);
       toast.dismiss(toastId);
       toast.success("AI suggestion ready ✨");
     } catch {
@@ -518,13 +525,22 @@ function ResumeEditorInner() {
       const json = await res.json();
       if (json.error) throw new Error(json.error);
 
-      const p = json.data;
+      // Normalize top-level keys to lowercase so "Education" and "education" both work
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = json.data as Record<string, any>;
+      const p: Record<string, any> = {};
+      for (const k of Object.keys(raw)) p[k.toLowerCase()] = raw[k];
+
       const addId = () => Math.random().toString(36).slice(2, 9);
+
+      // Education rows: handle alternate key names AI occasionally uses
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const eduRows: any[] = p.education ?? p.educations ?? p.schools ?? [];
 
       userEdited.current = true;
       setData({
         name:     p.name     || "",
-        title:    p.title    || "",
+        title:    p.title    || p.jobtitle || p.job_title || "",
         email:    p.email    || "",
         phone:    p.phone    || "",
         location: p.location || "",
@@ -532,37 +548,41 @@ function ResumeEditorInner() {
         linkedin: p.linkedin || "",
         github:   p.github   || "",
         summary:  p.summary  || "",
-        experience: (p.experience ?? []).map((e: { company?: string; role?: string; period?: string; bullets?: string[] }) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        experience: (p.experience ?? p.experiences ?? p.workexperience ?? p.work_experience ?? []).map((e: any) => ({
           id: addId(),
-          company: e.company || "",
-          role:    e.role    || "",
-          period:  e.period  || "",
-          bullets: (e.bullets ?? [""]).map((b: string) => ({ id: addId(), text: b })),
+          company: e.company || e.employer || e.organization || "",
+          role:    e.role    || e.title    || e.position     || "",
+          period:  e.period  || e.dates    || e.duration     || "",
+          bullets: (e.bullets ?? e.responsibilities ?? e.achievements ?? [""]).map((b: string) => ({ id: addId(), text: b })),
         })),
-        education: (p.education ?? []).map((e: { school?: string; degree?: string; period?: string; gpa?: string }) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        education: eduRows.map((e: any) => ({
           id:     addId(),
-          school: e.school || "",
-          degree: e.degree || "",
-          period: e.period || "",
-          gpa:    e.gpa    || "",
+          school: e.school || e.institution || e.university || e.college || e.name || "",
+          degree: e.degree || e.qualification || e.program   || "",
+          period: e.period || e.dates        || e.years      || e.duration || "",
+          gpa:    e.gpa    || e.grade        || "",
         })),
-        skills: (p.skills ?? []).map((g: { category?: string; items?: string[] }) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        skills: (p.skills ?? p.skill_groups ?? p.skillgroups ?? []).map((g: any) => ({
           id:       addId(),
-          category: g.category || "Other",
-          items:    g.items    ?? [],
+          category: g.category || g.name || "Other",
+          items:    g.items    ?? g.skills ?? [],
         })),
-        projects: (p.projects ?? []).map((pr: { name?: string; desc?: string; link?: string; tags?: string }) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        projects: (p.projects ?? p.project_list ?? []).map((pr: any) => ({
           id:   addId(),
-          name: pr.name || "",
-          desc: pr.desc || "",
-          link: pr.link || "",
-          tags: pr.tags || "",
+          name: pr.name  || pr.title || "",
+          desc: pr.desc  || pr.description || "",
+          link: pr.link  || pr.url || "",
+          tags: pr.tags  || pr.tech || pr.technologies || "",
         })),
       });
 
       toast.dismiss(toastId);
       toast.success("Resume imported!", {
-        description: `${p.experience?.length ?? 0} jobs · ${p.skills?.length ?? 0} skill groups · ${p.projects?.length ?? 0} projects`,
+        description: `${(p.experience ?? p.experiences ?? []).length} jobs · ${eduRows.length} education · ${(p.skills ?? []).length} skill groups`,
       });
       setSection("basics");
     } catch (err) {
@@ -573,15 +593,35 @@ function ResumeEditorInner() {
     }
   };
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
+    // Check / increment PDF export count
+    const res = await fetch("/api/user/pdf-export", { method: "POST" });
+    const json = await res.json();
+    if (json.limitReached) {
+      toast.error("Free plan allows 1 PDF export. Upgrade to Pro for unlimited exports.", {
+        action: { label: "Upgrade", onClick: () => window.location.href = "/settings?tab=billing" },
+        duration: 6000,
+      });
+      return;
+    }
+    if (!res.ok && !json.ok) {
+      toast.error("Could not start export — try again");
+      return;
+    }
+    // Refresh count
+    fetch("/api/user/pdf-export")
+      .then(r => r.json())
+      .then(json => setPdfExportData(json))
+      .catch(() => {});
     toast("Opening print dialog…");
     setTimeout(() => window.print(), 300);
   };
 
   const shareLink = async () => {
-    const url = `${window.location.origin}/editor/resume`;
+    if (!resumeId) { toast.error("Save your resume first"); return; }
+    const url = `${window.location.origin}/r/${resumeId}`;
     await navigator.clipboard.writeText(url);
-    toast.success("Link copied to clipboard!");
+    toast.success("Share link copied! Anyone with this link can view and download your resume.");
   };
 
   /* Current mode style */
@@ -597,10 +637,10 @@ function ResumeEditorInner() {
       </div>
 
       {/* Main editor */}
-      <div className="flex-1 ml-[220px] flex flex-col h-screen no-print">
+      <div className="flex-1 md:ml-[220px] flex flex-col h-screen no-print">
 
         {/* Toolbar */}
-        <div className="h-14 border-b border-white/[0.05] flex items-center gap-3 px-4 bg-[#050508]/80 flex-shrink-0">
+        <div className="h-14 border-b border-white/[0.05] flex items-center gap-2 px-4 pl-14 md:pl-4 bg-[#050508]/80 flex-shrink-0">
           <Link href="/dashboard" className="flex items-center gap-1.5 text-sm text-white/35 hover:text-white/60 transition-colors mr-2">
             <ArrowLeft className="w-3.5 h-3.5" /> Dashboard
           </Link>
@@ -608,7 +648,7 @@ function ResumeEditorInner() {
           <input
             value={data.name ? `${data.name} — ${data.title}` : "Untitled Resume"}
             readOnly
-            className="bg-transparent border-none text-sm font-semibold text-white/80 w-56 cursor-default"
+            className="hidden sm:block bg-transparent border-none text-sm font-semibold text-white/80 w-40 md:w-56 cursor-default"
           />
           {/* Hidden file input for resume import */}
           <input
@@ -631,7 +671,7 @@ function ResumeEditorInner() {
             </div>
             <button
               onClick={() => setShowTemplatePicker(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.05] border border-white/[0.08] text-white/45 hover:bg-white/[0.06] transition-all"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.05] border border-white/[0.08] text-white/45 hover:bg-white/[0.06] transition-all"
             >
               <LayoutTemplate className="w-3.5 h-3.5" />
               {RESUME_TEMPLATES.find(t => t.id === templateId)?.label ?? "Template"}
@@ -639,7 +679,7 @@ function ResumeEditorInner() {
             <button
               onClick={() => importRef.current?.click()}
               disabled={importing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.05] border border-white/[0.08] text-white/45 hover:bg-white/[0.06] transition-all disabled:opacity-50 disabled:cursor-wait"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.05] border border-white/[0.08] text-white/45 hover:bg-white/[0.06] transition-all disabled:opacity-50 disabled:cursor-wait"
             >
               {importing
                 ? <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }} className="block w-3.5 h-3.5 border-2 border-white/20 border-t-white/60 rounded-full" />
@@ -647,11 +687,11 @@ function ResumeEditorInner() {
               Import
             </button>
             <button onClick={() => setPreview(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.05] border border-white/[0.08] text-white/45 hover:bg-white/[0.05] transition-all">
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.05] border border-white/[0.08] text-white/45 hover:bg-white/[0.05] transition-all">
               <Eye className="w-3.5 h-3.5" /> Preview
             </button>
             <button onClick={shareLink}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.05] border border-white/[0.08] text-white/45 hover:bg-white/[0.05] transition-all">
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-white/[0.05] border border-white/[0.08] text-white/45 hover:bg-white/[0.05] transition-all">
               <Share2 className="w-3.5 h-3.5" /> Share
             </button>
             <button onClick={save}
@@ -659,9 +699,16 @@ function ResumeEditorInner() {
               {saved ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
               {saved ? "Saved" : "Save"}
             </button>
+            {aiUsage && !aiUsage.isPro && (
+              <span className={`hidden md:inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md border ${aiUsage.used >= aiUsage.limit ? "bg-amber-500/10 border-amber-500/25 text-amber-400" : "bg-white/[0.04] border-white/[0.08] text-white/35"}`}>
+                <Sparkles className="w-3 h-3" />
+                {aiUsage.used}/{aiUsage.limit} AI
+              </span>
+            )}
             <button onClick={exportPDF}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-[#060608] hover:bg-white/90 transition-colors">
-              <Download className="w-3.5 h-3.5" /> Export PDF
+              <Download className="w-3.5 h-3.5" />
+              {pdfExportData && !pdfExportData.isPro ? `PDF (${pdfExportData.used}/${pdfExportData.limit})` : "Export PDF"}
             </button>
           </div>
         </div>
@@ -669,8 +716,8 @@ function ResumeEditorInner() {
         {/* Body */}
         <div className="flex flex-1 overflow-hidden">
 
-          {/* Section nav */}
-          <div className="w-44 border-r border-white/[0.05] bg-white/[0.025] flex-shrink-0 overflow-y-auto">
+          {/* Section nav - desktop */}
+          <div className="hidden md:block w-44 border-r border-white/[0.05] bg-white/[0.025] flex-shrink-0 overflow-y-auto">
             <div className="p-3">
               <div className="text-[10px] text-white/35 uppercase tracking-wider font-medium mb-3 px-2">Sections</div>
               {SECTION_LABELS.map(s => (
@@ -683,7 +730,18 @@ function ResumeEditorInner() {
           </div>
 
           {/* Editor content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            {/* Section tabs - mobile only */}
+            <div className="md:hidden flex overflow-x-auto -mx-4 mb-4 px-2 border-b border-white/[0.05] pb-0">
+              {SECTION_LABELS.map(s => (
+                <button key={s.id} onClick={() => setSection(s.id)}
+                  className={`px-3 py-2.5 text-xs whitespace-nowrap flex items-center gap-1.5 flex-shrink-0 border-b-2 -mb-px transition-all ${
+                    section === s.id ? "text-white border-white/40" : "text-white/45 border-transparent"
+                  }`}>
+                  <s.icon className="w-3 h-3" />{s.label}
+                </button>
+              ))}
+            </div>
             <AnimatePresence mode="wait">
 
               {/* ── BASICS ── */}
@@ -735,8 +793,10 @@ function ResumeEditorInner() {
                             }),
                           });
                           const json = await res.json();
+                          if (handleAILimitError(json)) { toast.dismiss(id); return; }
                           if (json.error) throw new Error(json.error);
                           setSummarySugg(json.text);
+                          setAiUsage(u => u ? { ...u, used: Math.min((u.used ?? 0) + 1, u.limit) } : u);
                           toast.dismiss(id);
                           toast.success("AI suggestion ready ✨");
                         } catch {
@@ -1100,9 +1160,9 @@ function ResumeEditorInner() {
             </AnimatePresence>
           </div>
 
-          {/* AI panel */}
+          {/* AI panel - desktop only */}
           {aiOpen ? (
-            <div className="w-[272px] border-l border-white/[0.05] bg-white/[0.03] flex-shrink-0 overflow-y-auto">
+            <div className="hidden md:block w-[272px] border-l border-white/[0.05] bg-white/[0.03] flex-shrink-0 overflow-y-auto">
               <div className="p-4 space-y-5">
                 {/* Score */}
                 <div>
@@ -1140,7 +1200,8 @@ function ResumeEditorInner() {
                         try {
                           const res = await fetch("/api/ai/summary", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ current: data.summary, mode: "professional", role: data.title, title: data.title, experience: data.experience }) });
                           const json = await res.json();
-                          if (!json.error) { setField("summary", json.text); toast.dismiss(id); toast.success("Summary improved!"); }
+                          if (handleAILimitError(json)) { toast.dismiss(id); return; }
+                          if (!json.error) { setField("summary", json.text); setAiUsage(u => u ? { ...u, used: Math.min((u.used ?? 0) + 1, u.limit) } : u); toast.dismiss(id); toast.success("Summary improved!"); }
                           else throw new Error(json.error);
                         } catch { toast.dismiss(id); toast.error("AI request failed"); } finally { setAiLoading(false); }
                       }},
@@ -1151,7 +1212,8 @@ function ResumeEditorInner() {
                         try {
                           const res = await fetch("/api/ai/summary", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ current: data.summary, mode: "corporate", role: data.title, title: data.title, experience: data.experience }) });
                           const json = await res.json();
-                          if (!json.error) { setField("summary", json.text); toast.dismiss(id); toast.success("ATS keywords added!"); }
+                          if (handleAILimitError(json)) { toast.dismiss(id); return; }
+                          if (!json.error) { setField("summary", json.text); setAiUsage(u => u ? { ...u, used: Math.min((u.used ?? 0) + 1, u.limit) } : u); toast.dismiss(id); toast.success("ATS keywords added!"); }
                           else throw new Error(json.error);
                         } catch { toast.dismiss(id); toast.error("AI request failed"); } finally { setAiLoading(false); }
                       }},
@@ -1224,7 +1286,7 @@ function ResumeEditorInner() {
               </div>
             </div>
           ) : (
-            <button onClick={() => setAiOpen(true)} className="w-10 border-l border-white/[0.05] bg-white/[0.025] flex items-center justify-center text-white/25 hover:text-white/45 hover:bg-white/[0.02] transition-all flex-shrink-0">
+            <button onClick={() => setAiOpen(true)} className="hidden md:flex w-10 border-l border-white/[0.05] bg-white/[0.025] items-center justify-center text-white/25 hover:text-white/45 hover:bg-white/[0.02] transition-all flex-shrink-0">
               <span className="rotate-90 text-[10px] whitespace-nowrap text-white/35 font-medium tracking-wider">AI TOOLS</span>
             </button>
           )}

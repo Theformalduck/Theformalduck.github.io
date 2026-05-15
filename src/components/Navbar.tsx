@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Menu, X, ArrowUpRight } from "lucide-react";
+import { User, Menu, X, ArrowUpRight, LayoutDashboard } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 const NAV_LINKS = [
   { label: "Home",      href: "/" },
@@ -17,6 +18,8 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [scrolled,    setScrolled]    = useState(false);
   const [mobileOpen,  setMobileOpen]  = useState(false);
+  const { data: session, status } = useSession();
+  const loggedIn = status === "authenticated" && !!session;
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 16);
@@ -52,16 +55,28 @@ export default function Navbar() {
 
         {/* Right actions */}
         <div className="hidden md:flex items-center gap-2">
-          <Link href="/sign-in" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] text-white/40 hover:text-white/65 transition-colors">
-            <User className="w-3.5 h-3.5" />
-            Sign in
-          </Link>
-          <Link
-            href="/dashboard"
-            className="px-4 py-1.5 rounded-full bg-white text-[#060608] text-[13px] font-semibold hover:bg-white/90 transition-all"
-          >
-            Create Account
-          </Link>
+          {loggedIn ? (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white text-[#060608] text-[13px] font-semibold hover:bg-white/90 transition-all"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link href="/sign-in" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] text-white/40 hover:text-white/65 transition-colors">
+                <User className="w-3.5 h-3.5" />
+                Sign in
+              </Link>
+              <Link
+                href="/sign-up"
+                className="px-4 py-1.5 rounded-full bg-white text-[#060608] text-[13px] font-semibold hover:bg-white/90 transition-all"
+              >
+                Create Account
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -95,9 +110,21 @@ export default function Navbar() {
                 </Link>
               ))}
               <div className="pt-4 border-t border-white/[0.05]">
-                <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="block text-center py-2.5 rounded-full bg-white text-[#060608] text-sm font-semibold">
-                  Create Account
-                </Link>
+                {loggedIn ? (
+                  <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center justify-center gap-2 py-2.5 rounded-full bg-white text-[#060608] text-sm font-semibold">
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/sign-in" onClick={() => setMobileOpen(false)} className="block text-center py-2.5 text-sm text-white/45 hover:text-white transition-colors mb-2">
+                      Sign in
+                    </Link>
+                    <Link href="/sign-up" onClick={() => setMobileOpen(false)} className="block text-center py-2.5 rounded-full bg-white text-[#060608] text-sm font-semibold">
+                      Create Account
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

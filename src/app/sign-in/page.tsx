@@ -1,10 +1,19 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function SignInPage() {
   const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) {
+      document.cookie = `folio_ref=${encodeURIComponent(ref)}; path=/; max-age=604800; SameSite=Lax`;
+    }
+  }, [searchParams]);
 
   const handleGoogle = async () => {
     setLoading(true);

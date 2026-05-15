@@ -34,16 +34,27 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  resumes       Resume[]
-  portfolio     Portfolio?
-  createdAt     DateTime  @default(now())
+  id                   String    @id @default(cuid())
+  name                 String?
+  email                String?   @unique
+  emailVerified        DateTime?
+  image                String?
+  accounts             Account[]
+  sessions             Session[]
+  resumes              Resume[]
+  portfolio            Portfolio?
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?
+  subscriptionStatus   String?
+  plan                 String    @default("free")
+  currentPeriodEnd     DateTime?
+  aiUsageCount         Int       @default(0)
+  aiUsageResetAt       DateTime?
+  pdfExportCount       Int       @default(0)
+  referralCode         String?   @unique
+  referredBy           String?
+  referralCount        Int       @default(0)
+  createdAt            DateTime  @default(now())
 }
 
 model VerificationToken {
@@ -59,19 +70,32 @@ model Resume {
   userId    String
   label     String   @default("My Resume")
   data      String
+  isDefault Boolean  @default(false)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 }
 
 model Portfolio {
-  id        String   @id @default(cuid())
-  userId    String   @unique
+  id        String          @id @default(cuid())
+  userId    String          @unique
   data      String
-  theme     String   @default("minimal")
+  theme     String          @default("minimal")
   subdomain String?
-  published Boolean  @default(false)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  updatedAt DateTime @updatedAt
-  createdAt DateTime @default(now())
+  published Boolean         @default(false)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  views     PortfolioView[]
+  updatedAt DateTime        @updatedAt
+  createdAt DateTime        @default(now())
+}
+
+model PortfolioView {
+  id          String    @id @default(cuid())
+  portfolioId String
+  referrer    String?
+  utmSource   String?
+  createdAt   DateTime  @default(now())
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId, createdAt])
 }

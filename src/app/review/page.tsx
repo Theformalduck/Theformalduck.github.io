@@ -419,14 +419,14 @@ export default function ReviewPage() {
     <div className="flex min-h-screen bg-[#050508]">
       <DashboardSidebar />
 
-      <main className="flex-1 ml-[220px] min-h-screen">
+      <main className="flex-1 md:ml-[220px] min-h-screen">
         {/* Top bar */}
-        <div className="h-16 border-b border-white/[0.05] flex items-center justify-between px-8 bg-[#050508]/80 backdrop-blur-xl sticky top-0 z-30">
+        <div className="h-16 border-b border-white/[0.05] flex items-center justify-between px-4 pl-14 md:px-8 bg-[#050508]/80 backdrop-blur-xl sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <Users className="w-5 h-5 text-white/50" />
             <h1 className="font-semibold">Recruiter Review</h1>
           </div>
-          <div className="flex items-center gap-1 bg-white/[0.05] rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-white/[0.05] rounded-xl p-1 overflow-x-auto">
             {(
               [
                 ["ai", "AI Analysis"],
@@ -437,7 +437,7 @@ export default function ReviewPage() {
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                className={`px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap ${
                   activeTab === id
                     ? "bg-white/[0.08] text-white"
                     : "text-white/35 hover:text-white/45"
@@ -449,7 +449,7 @@ export default function ReviewPage() {
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-4 md:p-8">
           <AnimatePresence mode="wait">
             {/* AI Analysis tab */}
             {activeTab === "ai" && (
