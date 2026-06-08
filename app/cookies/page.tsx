@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { InfoPage, LEGAL_UPDATED, LEGAL_EMAIL } from "@/components/site/info-page";
+import { CookieSettingsLink } from "@/components/consent/cookie-settings-link";
 
 export const metadata: Metadata = {
   title: "Cookie Policy",
@@ -46,11 +47,18 @@ export default function CookiesPage() {
         cookies is governed by their own policies.
       </p>
 
-      <h2>4. Managing cookies</h2>
+      <h2>4. Your choices</h2>
       <p>
-        Most browsers let you view, manage, and delete cookies through their settings, and block cookies
-        from specific or all sites. Note that blocking strictly necessary cookies will prevent you from
-        signing in and using core features of the Service.
+        Analytics and marketing cookies are off until you opt in through our consent banner, shown on
+        your first visit. You can change or withdraw your choice at any time by opening{" "}
+        <CookieSettingsLink className="text-blue-600 font-medium underline underline-offset-2" />, or
+        from the link in our footer. Strictly necessary cookies cannot be switched off, as the Service
+        cannot function without them.
+      </p>
+      <p>
+        Most browsers also let you view, manage, and delete cookies through their settings, and block
+        cookies from specific or all sites. Note that blocking strictly necessary cookies will prevent
+        you from signing in and using core features of the Service.
       </p>
 
       <h2>5. Changes to this policy</h2>

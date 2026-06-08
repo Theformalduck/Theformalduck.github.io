@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 import { Share2, Link as LinkIcon, Globe, PlayCircle, AtSign } from "lucide-react";
 import { SelloraIcon } from "@/components/ui/logo";
+import { CookieSettingsLink } from "@/components/consent/cookie-settings-link";
 
 const footerLinks = {
   Product: [
@@ -84,6 +85,11 @@ export function Footer() {
                     </Link>
                   </li>
                 ))}
+                {section === "Legal" && (
+                  <li>
+                    <CookieSettingsLink className="text-white/40 hover:text-white/80 text-sm transition-colors" />
+                  </li>
+                )}
               </ul>
             </div>
           ))}

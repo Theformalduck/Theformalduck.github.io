@@ -2,7 +2,10 @@ import { captureError, log } from "./lib/logger";
 
 // Runs once when the server starts.
 export async function register() {
-  log.info("server.start", { env: process.env.NODE_ENV, node: process.version });
+  // process.version is a Node.js API and isn't available in the Edge Runtime,
+  // where this same register() also runs — only read it on Node.
+  const node = process.env.NEXT_RUNTIME === "nodejs" ? process.version : undefined;
+  log.info("server.start", { env: process.env.NODE_ENV, runtime: process.env.NEXT_RUNTIME, node });
 }
 
 // Next.js calls this for every uncaught error in a route handler or server
