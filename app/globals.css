@@ -1,0 +1,319 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-grotesk: var(--ff-grotesk), ui-sans-serif, sans-serif;
+  --font-serif: var(--ff-serif), ui-serif, Georgia, serif;
+  --font-editorial: var(--ff-editorial), ui-serif, Georgia, serif;
+  --font-elegant: var(--ff-elegant), ui-serif, Georgia, serif;
+  --font-slab: var(--ff-slab), ui-serif, Georgia, serif;
+  --font-rounded: var(--ff-rounded), ui-sans-serif, sans-serif;
+  --font-playful: var(--ff-playful), ui-sans-serif, sans-serif;
+  --font-display: var(--ff-display), ui-sans-serif, sans-serif;
+
+  --color-nexus-50: #f0f9ff;
+  --color-nexus-100: #d9f1fb;
+  --color-nexus-200: #a8e0f5;
+  --color-nexus-300: #64c9ed;
+  --color-nexus-400: #3dbde6;
+  --color-nexus-500: #29abe2;
+  --color-nexus-600: #1a8fc2;
+  --color-nexus-700: #1571a0;
+  --color-nexus-800: #1a8cf0;
+  --color-nexus-900: #2e9cfe;
+
+  --color-accent: #c8e83c;
+  --color-accent-hover: #b8d82c;
+
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border-color);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-slow: pulse-slow 4s ease-in-out infinite;
+  --animate-gradient: gradient-shift 8s ease infinite;
+  --animate-fade-up: fade-up 0.6s ease-out forwards;
+  --animate-fade-in: fade-in 0.4s ease-out forwards;
+  --animate-slide-in: slide-in 0.5s ease-out forwards;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0d1117;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border-color: #e2e8f0;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #080f1a;
+    --foreground: #e8f4fd;
+    --surface: #0d1825;
+    --surface-2: #111f30;
+    --border-color: #1e3347;
+    --muted: #111f30;
+    --muted-foreground: #5bafd4;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-14px); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes loadingbar {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+
+@keyframes accordion-down {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+}
+
+h1, h2, h3, h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  background: rgba(14, 165, 233, 0.12);
+  color: #1a8cf0;
+}
+
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Sky gradient — landing hero */
+.sky-gradient {
+  background: linear-gradient(
+    180deg,
+    #054d8a 0%,
+    #0a7cc4 14%,
+    #1099e0 30%,
+    #1ab4ea 50%,
+    #3dc8f5 70%,
+    #92e0fb 86%,
+    #d4f3fd 95%,
+    #f0faff 100%
+  ) !important;
+}
+
+.cloud-fade {
+  background: linear-gradient(to top, #ffffff 0%, rgba(255,255,255,0.9) 30%, rgba(255,255,255,0.4) 60%, transparent 100%);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.glass-dark {
+  background: rgba(8, 15, 26, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Gradient text — use sparingly, max once per page */
+.gradient-text {
+  background: linear-gradient(135deg, #1571a0 0%, #29abe2 50%, #64c9ed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-light {
+  background: linear-gradient(135deg, #bef0ff 0%, #ffffff 50%, #c8e83c 85%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 6s linear infinite;
+}
+
+/* Card shadow system */
+.card-sm {
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.card-md {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 24px rgba(0,0,0,0.06);
+}
+
+.card-lg {
+  box-shadow: 0 4px 6px rgba(0,0,0,0.04), 0 16px 48px rgba(0,0,0,0.08);
+}
+
+.card-hover {
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 4px 6px rgba(0,0,0,0.04), 0 16px 48px rgba(0,0,0,0.09);
+  transform: translateY(-1px);
+}
+
+/* Glows */
+.glow-blue {
+  box-shadow: 0 0 40px rgba(14, 165, 233, 0.4), 0 0 80px rgba(14, 165, 233, 0.12);
+}
+
+.glow-sky {
+  box-shadow: 0 0 40px rgba(56, 189, 248, 0.35), 0 0 80px rgba(56, 189, 248, 0.12);
+}
+
+.glow-lime {
+  box-shadow: 0 0 28px rgba(200, 232, 60, 0.45), 0 0 56px rgba(200, 232, 60, 0.18);
+}
+
+/* Grid pattern — very subtle, barely visible */
+.grid-pattern {
+  background-image:
+    linear-gradient(rgba(14, 165, 233, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* Portfolio builder input */
+.input {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 12px;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus {
+  border-color: #2e9cfe;
+  box-shadow: 0 0 0 2px rgba(12,74,110,0.08);
+}
+.input::placeholder {
+  color: #9ca3af;
+}
+
+/* Section labels (replace the pill+line pattern) */
+.section-label {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #1a8fc2;
+}
+
+/* Heading tracking */
+.heading-tight {
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.heading-display {
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #29abe2;
+}
+
+/* Hide scrollbar for sticky nav */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Respect users who prefer reduced motion — tone down CSS animations/transitions.
+   Intentional, content-driven marquees (.marquee-anim) are exempt: a creator who
+   adds scrolling text means it to keep moving, and freezing it reads as broken. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.marquee-anim),
+  *:not(.marquee-anim)::before,
+  *:not(.marquee-anim)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

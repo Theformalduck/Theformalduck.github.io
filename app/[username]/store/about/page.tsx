@@ -1,0 +1,83 @@
+export const dynamic = "force-dynamic";
+
+import { db } from "@/lib/db";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { STORE_THEMES, BUTTON_STYLES, DEFAULT_SETTINGS } from "@/lib/store-themes";
+import type { StoreSettings } from "@/lib/store-themes";
+
+export default async function StoreAboutPage({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}) {
+  const { username } = await params;
+
+  const user = await db.user.findUnique({
+    where: { username },
+    select: { id: true, name: true, username: true, image: true, bio: true },
+  });
+  if (!user) notFound();
+
+  const storeRecord = await db.store.findUnique({ where: { userId: user.id } }).catch(() => null);
+
+  const theme     = STORE_THEMES[(storeRecord?.theme ?? DEFAULT_SETTINGS.theme)] ?? STORE_THEMES.default;
+  const btnStyle  = BUTTON_STYLES[(storeRecord?.buttonStyle ?? DEFAULT_SETTINGS.buttonStyle)] ?? BUTTON_STYLES.rounded;
+  const accent    = storeRecord?.primaryColor ?? DEFAULT_SETTINGS.primaryColor;
+  const storeName = storeRecord?.name ?? user.name ?? username;
+  const logoImage = storeRecord?.logoImage ?? null;
+
+  const storePages = (storeRecord?.storePages as StoreSettings["storePages"]) ?? {};
+  const pageData   = storePages?.about;
+  const pageTitle  = pageData?.title ?? "About";
+  const pageContent = pageData?.content ?? user.bio ?? "";
+
+  return (
+    <div style={{ backgroundColor: theme.bg, color: theme.text, minHeight: "100vh" }}>
+      {/* Nav */}
+      <header className="sticky top-0 z-40 border-b" style={{ background: theme.navBg, borderColor: theme.border }}>
+        <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
+          <Link href={`/${username}/store`} className="flex items-center gap-2.5">
+            {logoImage
+              ? <img src={logoImage} alt={storeName} className="h-7 w-auto object-contain" />
+              : <span className="text-base font-semibold tracking-tight" style={{ color: theme.text }}>{storeName}</span>
+            }
+          </Link>
+          <Link href={`/${username}/store`}
+            className="text-sm font-medium transition-opacity hover:opacity-70"
+            style={{ color: theme.muted }}>
+            ← Back to store
+          </Link>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-6 py-16">
+        <h1 className="font-black text-4xl mb-8" style={{ color: theme.text }}>{pageTitle}</h1>
+        {pageContent ? (
+          <div className="text-base leading-relaxed whitespace-pre-wrap max-w-2xl" style={{ color: theme.muted }}>
+            {pageContent}
+          </div>
+        ) : (
+          <p className="text-sm italic" style={{ color: theme.muted }}>
+            No about information has been added yet.
+          </p>
+        )}
+      </main>
+
+      <footer className="border-t mt-16" style={{ borderColor: theme.border }}>
+        <div className="max-w-4xl mx-auto px-6 py-6 flex items-center justify-between">
+          <Link href={`/${username}/store`}
+            className={`text-sm font-medium px-4 py-2 border transition-opacity hover:opacity-70 ${btnStyle.radius}`}
+            style={{ borderColor: theme.border, color: theme.muted, background: theme.surface }}>
+            ← Shop
+          </Link>
+          <Link href={`/${username}/store/contact`}
+            className="text-sm font-medium hover:opacity-70 transition-opacity"
+            style={{ color: accent }}>
+            Contact →
+          </Link>
+        </div>
+      </footer>
+    </div>
+  );
+}

@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 100">
-  <!-- Left A (back, smaller) -->
-  <path fill-rule="evenodd" fill="currentColor" d="M6,88 L76,88 L42,10 Z M20,88 L60,88 L42,46 Z"/>
-  <!-- Right A (front, larger) -->
-  <path fill-rule="evenodd" fill="currentColor" d="M42,88 L114,88 L78,8 Z M57,88 L97,88 L78,44 Z"/>
-  <!-- Small triangle inside hollow of right A -->
-  <polygon fill="currentColor" points="66,80 78,62 90,80"/>
-</svg>

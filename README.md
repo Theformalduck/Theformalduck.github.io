@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sellora
 
-## Getting Started
+Sellora is a creator commerce platform — every creator gets a customizable storefront, a portfolio site, and crowdfunding campaigns under one account. It's built with the Next.js App Router, Prisma + PostgreSQL, NextAuth, and Stripe Connect.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Storefront builder** — a Shopify-style customizer with live preview (click any section to edit), drag-and-drop page sections (Home / Collection / Product), themes & templates, and a draft → publish workflow.
+- **Commerce** — products with variants, swatches & per-variant images, metafields, collections, discount codes, multi-currency display, cart drawer or full cart page, and Stripe Connect checkout.
+- **Order lifecycle** — confirmation, status + tracking emails, printable receipts, low-stock alerts, and a per-order buyer↔seller message thread.
+- **Engagement** — account wishlists, newsletter subscriber capture (with CSV export), and product reviews with verified-purchase badges and seller replies.
+- **Analytics** — a revenue/orders dashboard plus per-store SEO (OpenGraph, JSON-LD structured data) and pluggable analytics/script injection (GA4, Meta Pixel, custom code).
+- Also: creator portfolios and crowdfunding campaigns.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Getting started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Install dependencies:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   npm install
+   ```
 
-## Learn More
+2. Create `.env.local` with at least:
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   DATABASE_URL=postgresql://...        # Postgres (e.g. Supabase) connection string
+   NEXTAUTH_URL=http://localhost:3000
+   AUTH_SECRET=...                      # NextAuth secret
+   STRIPE_SECRET_KEY=sk_test_...        # optional — required for checkout
+   STRIPE_WEBHOOK_SECRET=whsec_...      # optional — Stripe webhook signing secret
+   RESEND_API_KEY=...                   # optional — transactional email (falls back to console)
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. Sync the database schema and generate the Prisma client:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   npx prisma db push --schema=prisma/schema.prisma
+   npx prisma generate --schema=prisma/schema.prisma
+   ```
 
-## Deploy on Vercel
+4. Run the dev server:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   npm run dev
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   Open [http://localhost:3000](http://localhost:3000).
+
+## Tech stack
+
+- **Framework:** Next.js 16 (App Router, Turbopack)
+- **Database:** PostgreSQL via Prisma (`@prisma/adapter-pg`)
+- **Auth:** NextAuth (JWT sessions, credentials + OAuth)
+- **Payments:** Stripe Connect (destination charges + platform fee)
+- **Styling:** Tailwind CSS
+
+## Project notes
+
+- Prisma schema lives in `prisma/schema.prisma`. After any schema change run `db push` + `generate`, then restart the dev server (the Prisma client is cached in memory).
+- Network/auth routing lives in `proxy.ts` (the Next 16 successor to `middleware.ts`).
+- Deployment config is in `vercel.json` / `.github/workflows/ci.yml`; see `DEPLOYMENT.md`.

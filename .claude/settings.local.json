@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd c:\\\\Users\\\\rfgsh\\\\nexus-creator; npx tsc --noEmit 2>&1 | Where-Object { $_ -match \"store-client|customize|store-themes\" })",
+      "PowerShell(Start-Process -NoNewWindow -FilePath \"npm\" -ArgumentList \"run\",\"dev\" -RedirectStandardOutput \"C:\\\\Users\\\\rfgsh\\\\nexus-creator\\\\dev-out.txt\" -RedirectStandardError \"C:\\\\Users\\\\rfgsh\\\\nexus-creator\\\\dev-err.txt\")"
+    ]
+  }
+}

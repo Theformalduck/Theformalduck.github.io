@@ -4,7 +4,90 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+// ── Auth ──────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  emailVerified  DateTime?
+  name           String?
+  username       String?   @unique
+  bio            String?
+  image          String?
+  passwordHash   String?
+  role           UserRole  @default(CREATOR)
+  verified       Boolean   @default(false)
+  bannedAt       DateTime?
+  stripeAccountId String?
+  paypalEmail     String?
+  notificationPrefs Json?
+
+  // Relations
+  accounts       Account[]
+  sessions       Session[]
+  portfolio      Portfolio?
+  store          Store?
+  campaigns      Campaign[]
+  products       Product[]
+  collections    Collection[]
+  discounts      Discount[]
+  wishlist       Product[] @relation("Wishlist")
+  subscribers    Subscriber[] @relation("StoreSubscribers")
+  sentOrderMessages OrderMessage[] @relation("SentOrderMessages")
+  orders         Order[]   @relation("BuyerOrders")
+  posts          Post[]
+  comments       Comment[]
+  postLikes      PostLike[]
+  followers      Follow[]  @relation("Followers")
+  following      Follow[]  @relation("Following")
+  notifications  Notification[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  backedCampaigns Backer[]
+  reviews         Review[]
+  subscriptions          Subscription[] @relation("UserSubscriptions")
+  creatorSubscriptions   Subscription[] @relation("CreatorSubscriptions")
+  communityTemplates     CommunityTemplate[]
+  teamStaff              TeamMember[] @relation("AccountStaff")      // people who work for this account
+  staffMemberships       TeamMember[] @relation("StaffMemberships")  // accounts this user works for
+  reports                Report[]     @relation("Reports")           // reports this user filed
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// A staff member on an account (store owner). Roles map to permission sets in
+// lib/team.ts. `userId` is null until the invite is accepted.
+model TeamMember {
+  id         String    @id @default(cuid())
+  ownerId    String    // the account owner being managed
+  userId     String?   // the staff user (set on accept)
+  email      String    // invited email (lowercased)
+  role       String    @default("STAFF") // ADMIN | MANAGER | STAFF
+  status     String    @default("pending") // pending | active
+  token      String?   @unique
+  invitedAt  DateTime  @default(now())
+  acceptedAt DateTime?
+
+  owner  User  @relation("AccountStaff", fields: [ownerId], references: [id], onDelete: Cascade)
+  member User? @relation("StaffMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, email])
+  @@index([userId])
+  @@map("team_members")
+}
+
+enum UserRole {
+  CREATOR
+  SUPPORTER
+  BUYER
+  INVESTOR
+  RECRUITER
+  ADMIN
 }
 
 model Account {
@@ -20,9 +103,11 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@map("accounts")
 }
 
 model Session {
@@ -30,72 +115,624 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
 }
 
-model User {
-  id                   String    @id @default(cuid())
-  name                 String?
-  email                String?   @unique
-  emailVerified        DateTime?
-  image                String?
-  accounts             Account[]
-  sessions             Session[]
-  resumes              Resume[]
-  portfolio            Portfolio?
-  stripeCustomerId     String?   @unique
-  stripeSubscriptionId String?
-  subscriptionStatus   String?
-  plan                 String    @default("free")
-  currentPeriodEnd     DateTime?
-  aiUsageCount         Int       @default(0)
-  aiUsageResetAt       DateTime?
-  pdfExportCount       Int       @default(0)
-  referralCode         String?   @unique
-  referredBy           String?
-  referralCount        Int       @default(0)
-  createdAt            DateTime  @default(now())
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
-model Resume {
-  id        String   @id @default(cuid())
-  userId    String
-  label     String   @default("My Resume")
-  data      String
-  isDefault Boolean  @default(false)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  updatedAt DateTime @updatedAt
-  createdAt DateTime @default(now())
-}
+// ── Portfolio ─────────────────────────────────────────
 
 model Portfolio {
-  id        String          @id @default(cuid())
-  userId    String          @unique
-  data      String
-  theme     String          @default("minimal")
-  subdomain String?
-  published Boolean         @default(false)
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  views     PortfolioView[]
-  updatedAt DateTime        @updatedAt
-  createdAt DateTime        @default(now())
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  title       String?
+  description String?
+  template    String  @default("minimal")
+  primaryColor String @default("#29abe2")
+  customDomain String?
+  published   Boolean @default(false)
+  seoTitle    String?
+  seoDesc     String?
+  settings    Json?
+  canvasData  Json?
+
+  sections    PortfolioSection[]
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("portfolios")
 }
 
-model PortfolioView {
-  id          String    @id @default(cuid())
+model PortfolioSection {
+  id          String  @id @default(cuid())
   portfolioId String
-  referrer    String?
-  utmSource   String?
-  createdAt   DateTime  @default(now())
-  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  type        String  // hero | about | skills | projects | testimonials | contact | store | campaigns
+  visible     Boolean @default(true)
+  order       Int     @default(0)
+  content     Json    @default("{}")
 
-  @@index([portfolioId, createdAt])
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@map("portfolio_sections")
+}
+
+// ── Campaigns ─────────────────────────────────────────
+
+model Campaign {
+  id           String         @id @default(cuid())
+  userId       String
+  title        String
+  shortDesc    String?
+  description  String
+  coverImage   String?
+  videoUrl     String?
+  goal         Float
+  raised       Float          @default(0)
+  category     String?
+  status       CampaignStatus @default(DRAFT)
+  deadline     DateTime?
+  stripeProductId String?
+
+  rewards      Reward[]
+  updates      CampaignUpdate[]
+  backers      Backer[]
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("campaigns")
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  FUNDED
+  FAILED
+  CANCELLED
+}
+
+model Reward {
+  id          String  @id @default(cuid())
+  campaignId  String
+  title       String
+  description String
+  amount      Float
+  limit       Int?
+  claimed     Int     @default(0)
+
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  backers     Backer[]
+
+  @@map("rewards")
+}
+
+model Backer {
+  id          String  @id @default(cuid())
+  userId      String
+  campaignId  String
+  rewardId    String?
+  amount      Float
+  stripePaymentId String? @unique
+  paypalOrderId String?
+  status      String  @default("completed")
+
+  user        User     @relation(fields: [userId], references: [id])
+  campaign    Campaign @relation(fields: [campaignId], references: [id])
+  reward      Reward?  @relation(fields: [rewardId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@map("backers")
+}
+
+model CampaignUpdate {
+  id         String   @id @default(cuid())
+  campaignId String
+  title      String
+  body       String
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("campaign_updates")
+}
+
+// ── Store ─────────────────────────────────────────────
+
+model Store {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  name              String?
+  tagline           String?
+  bannerImage       String?
+  logoImage         String?
+  theme             String   @default("default")
+  primaryColor      String   @default("#29abe2")
+  buttonStyle       String   @default("rounded")
+  fontStyle         String   @default("modern")
+  layout            String   @default("grid")
+  carouselRows      Int      @default(1)
+  carouselAutoplay  Boolean  @default(false)
+  cardStyle         String   @default("shadow")
+  announcementText  String?
+  announcementColor String   @default("#29abe2")
+  showRatings       Boolean  @default(true)
+  featuredIds       String[]
+  socialLinks       Json     @default("{}")
+  policies          Json     @default("{}")
+  heroStyle         String   @default("centered")
+  navStyle          String   @default("default")
+  navHeight         String   @default("default")
+  imageRatio        String   @default("square")
+  showProductCount  Boolean  @default(true)
+  showFilters       Boolean  @default(true)
+  sectionTitle      String?
+  footerStyle       String   @default("standard")
+  backgroundEffect  String   @default("none")
+  heroSize          String   @default("large")
+  heroTextAlign     String   @default("left")
+  ctaText           String?
+  heroHeading       String?
+  heroSubheading    String?
+  heroMarqueeText   String?
+  heroCtaPos        String   @default("top-right")
+  heroItems         Json     @default("[]")
+  showNewsletter    Boolean  @default(false)
+  heroOverlay       Int      @default(50)
+  customButtons     Json     @default("[]")
+  elementPositions  Json     @default("{}")
+  storePages        Json     @default("{}")
+  stickyHeader      Boolean  @default(true)
+  tickerEnabled     Boolean  @default(false)
+  tickerText        String?
+  tickerSpeed       String   @default("normal")
+  showSaleBadge     Boolean  @default(true)
+  showNewBadge      Boolean  @default(false)
+  showQuickAdd      Boolean  @default(true)
+  showProductType   Boolean  @default(true)
+  showTrustBar      Boolean  @default(true)
+  trustBadges       Json     @default("[]")
+  seoTitle          String?
+  seoDescription    String?
+  favicon           String?
+  customCss         String?
+  typographyScale   String   @default("normal")
+  // Integrations / tracking
+  googleAnalyticsId String?
+  metaPixelId       String?
+  customHeadCode    String?
+  customBodyCode    String?
+  // Cart
+  showFreeShippingBar    Boolean @default(false)
+  freeShippingThreshold  Float   @default(50)
+  cartNote               Boolean @default(false)
+  cartBehavior           String  @default("drawer") // "drawer" | "page"
+  // Inventory — seller is alerted when a product crosses this threshold (0 = off)
+  lowStockThreshold      Int     @default(5)
+  // Products
+  showShareButtons       Boolean @default(true)
+  showWishlist           Boolean @default(false)
+  showProductZoom        Boolean @default(true)
+  stockBadge             Boolean @default(true)
+  stockBadgeThreshold    Int     @default(5)
+  // Footer
+  showPaymentIcons       Boolean @default(true)
+  // Popup
+  popupEnabled           Boolean @default(false)
+  popupTitle             String?
+  popupDelay             Int     @default(5)
+  // Sections
+  testimonialsEnabled    Boolean @default(false)
+  testimonialItems       Json    @default("[]")
+  imageBannerEnabled     Boolean @default(false)
+  imageBannerHeading     String?
+  imageBannerText        String?
+  imageBannerImage       String?
+  imageBannerCtaText     String?
+  imageBannerLayout      String  @default("left")
+  iconRowEnabled         Boolean @default(false)
+  iconRowItems           Json    @default("[]")
+
+  // Drag-and-drop section builder — ordered blocks per page.
+  homeSections           Json    @default("[]")
+  collectionSections     Json    @default("[]")
+  productSections        Json    @default("[]")
+  homeLayout             Json    @default("[]") // unified ordered page layout (core + custom)
+  customPages            Json    @default("[]") // user-created pages: [{ id, title, slug, sections }]
+
+  // Product page layout customization
+  productGalleryStyle    String  @default("thumbnails")
+  productInfoLayout      String  @default("accordion")
+  showRelatedProducts    Boolean @default(true)
+  relatedProductsCount   Int     @default(4)
+
+  // Markets / multi-currency display
+  baseCurrency           String  @default("USD")
+  enabledCurrencies      String[] @default([])
+  showCurrencySwitcher   Boolean @default(false)
+
+  // Draft theme — unpublished in-progress settings. When non-null there are
+  // unpublished changes; publishing copies these into the live columns above.
+  draftSettings          Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("stores")
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  userId       String
+  name         String
+  description  String?
+  price        Float
+  comparePrice Float?
+  type         ProductType
+  status       ProductStatus @default(DRAFT)
+  images       String[]
+  inventory    Int?
+  digital         Json?         // { fileUrl, downloadLimit }
+  metafields      Json          @default("[]") // [{ label, value }] custom spec rows
+  billingInterval String?       // "month" | "year" — only for SUBSCRIPTION type
+  stripeProductId String?
+  stripePriceId   String?
+
+  variants      ProductVariant[]
+  orderItems    OrderItem[]
+  reviews       Review[]
+  subscriptions Subscription[]
+  collections   Collection[] @relation("ProductCollections")
+  wishlistedBy  User[]       @relation("Wishlist")
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("products")
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  slug        String
+  description String?
+  image       String?
+  position    Int      @default(0)
+
+  products Product[] @relation("ProductCollections")
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, slug])
+  @@map("collections")
+}
+
+model Discount {
+  id          String    @id @default(cuid())
+  userId      String
+  code        String    // stored uppercase; matched case-insensitively
+  type        String    @default("PERCENT") // "PERCENT" | "FIXED"
+  value       Float     // percent (0-100) or fixed dollar amount
+  active      Boolean   @default(true)
+  minSubtotal Float     @default(0)
+  usageLimit  Int?      // null = unlimited
+  usageCount  Int       @default(0)
+  expiresAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, code])
+  @@map("discounts")
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  ownerId   String   // the store owner (creator) who collected this email
+  email     String
+  createdAt DateTime @default(now())
+
+  owner User @relation("StoreSubscribers", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, email])
+  @@map("subscribers")
+}
+
+enum ProductType {
+  DIGITAL
+  PHYSICAL
+  SERVICE
+  SUBSCRIPTION
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model ProductVariant {
+  id         String  @id @default(cuid())
+  productId  String
+  optionType String  @default("option")
+  name       String
+  colorHex   String?
+  image      String?  // per-variant image — switches the gallery when selected
+  price      Float?
+  inventory  Int?
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+// ── Orders ────────────────────────────────────────────
+
+// Holds the checkout context (cart items, buyer, discount, or campaign pledge)
+// between creating a PayPal order and capturing it on return. Keyed by the
+// PayPal order id; deleted once fulfilled.
+model PendingCheckout {
+  id        String   @id // PayPal order id
+  kind      String   // "store" | "campaign"
+  data      Json
+  createdAt DateTime @default(now())
+
+  @@map("pending_checkouts")
+}
+
+// User-submitted reports of posts, profiles, products, stores or campaigns —
+// reviewed in the admin moderation queue.
+model Report {
+  id         String    @id @default(cuid())
+  reporterId String
+  targetType String    // post | user | product | store | campaign | comment
+  targetId   String
+  reason     String    // spam | scam | abuse | illegal | other
+  details    String?
+  status     String    @default("open") // open | dismissed | actioned
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  reporter   User @relation("Reports", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([targetType, targetId])
+  @@map("reports")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  buyerId         String?
+  guestEmail      String?
+  total           Float
+  status          OrderStatus @default(PENDING)
+  stripeSessionId String?     @unique
+  stripePaymentIntentId String?
+  paypalOrderId   String?
+  paypalCaptureId String?
+  shippingAddress Json?
+  trackingNumber  String?
+  trackingUrl     String?
+
+  items           OrderItem[]
+  buyer           User? @relation("BuyerOrders", fields: [buyerId], references: [id])
+  messages        OrderMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("orders")
+}
+
+model OrderMessage {
+  id        String   @id @default(cuid())
+  orderId   String
+  senderId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender User  @relation("SentOrderMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_messages")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  REFUNDED
+  CANCELLED
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int     @default(1)
+  price     Float
+
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Review {
+  id        String  @id @default(cuid())
+  productId String
+  authorId  String
+  rating    Int
+  comment   String?
+  sellerReply String?     // optional public reply from the store owner
+  sellerRepliedAt DateTime?
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  author    User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([productId, authorId])
+  @@map("reviews")
+}
+
+// ── Community ─────────────────────────────────────────
+
+model Post {
+  id        String     @id @default(cuid())
+  userId    String
+  content   String
+  images    String[]
+  tags      String[]
+  likes     Int        @default(0)
+  comments  Comment[]
+  postLikes PostLike[]
+
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("posts")
+}
+
+model Comment {
+  id      String @id @default(cuid())
+  postId  String
+  userId  String
+  content String
+
+  post    Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("comments")
+}
+
+model PostLike {
+  userId String
+  postId String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+  @@map("post_likes")
+}
+
+model Follow {
+  followerId  String
+  followingId String
+
+  follower    User @relation("Followers", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([followerId, followingId])
+  @@map("follows")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("email_verification_tokens")
+}
+
+model Notification {
+  id      String  @id @default(cuid())
+  userId  String
+  type    String
+  title   String
+  body    String?
+  read    Boolean @default(false)
+  data    Json?
+
+  user    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+// ── Community Templates ───────────────────────────────────
+
+model CommunityTemplate {
+  id          String   @id @default(cuid())
+  authorId    String
+  name        String
+  description String?
+  category    String?
+  thumbnail   String?
+  canvasData  Json
+  useCount    Int      @default(0)
+
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("community_templates")
+}
+
+// ── Subscriptions ─────────────────────────────────────────
+
+model Subscription {
+  id                   String   @id @default(cuid())
+  subscriberId         String
+  productId            String
+  creatorId            String
+  stripeSubscriptionId String   @unique
+  stripeCustomerId     String
+  status               String   @default("active") // active | cancelled | past_due | trialing | incomplete
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean  @default(false)
+
+  subscriber User    @relation("UserSubscriptions",    fields: [subscriberId], references: [id])
+  product    Product @relation(fields: [productId],    references: [id])
+  creator    User    @relation("CreatorSubscriptions", fields: [creatorId],    references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("subscriptions")
 }
