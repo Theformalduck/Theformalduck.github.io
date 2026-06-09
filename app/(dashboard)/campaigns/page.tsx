@@ -24,8 +24,9 @@ export default function CampaignsPage() {
   const load = () => {
     setLoading(true);
     fetch("/api/campaigns")
-      .then((r) => r.json())
-      .then(setCampaigns)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setCampaigns(Array.isArray(d) ? d : []))
+      .catch(() => {})
       .finally(() => setLoading(false));
   };
 

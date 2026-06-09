@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { RefreshCw, Users, TrendingUp, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { RefreshCw, Users, TrendingUp, AlertCircle, Plus } from "lucide-react";
 
 interface CreatorSub {
   id: string; status: string; currentPeriodEnd: string; cancelAtPeriodEnd: boolean; createdAt: string;
@@ -119,7 +120,13 @@ export default function SubscriptionsPage() {
             <div className="py-12 text-center bg-white rounded-2xl border border-gray-100">
               <RefreshCw className="w-10 h-10 text-gray-200 mx-auto mb-3" />
               <p className="text-gray-500 font-medium">No subscribers yet</p>
-              <p className="text-gray-400 text-sm mt-1">Create a Subscription product in your store to start earning recurring revenue.</p>
+              <p className="text-gray-400 text-sm mt-1 mb-5">Create a Subscription product to start earning recurring revenue.</p>
+              <Link
+                href="/store/products/new"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#c8e83c] text-gray-900 text-sm font-semibold hover:bg-[#b8d82c] transition-colors"
+              >
+                <Plus className="w-4 h-4" /> Create subscription product
+              </Link>
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

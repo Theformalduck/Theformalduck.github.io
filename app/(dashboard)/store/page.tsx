@@ -88,8 +88,18 @@ export default function StorePage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/products").then((r) => r.json()).then(setProducts).finally(() => setLoadingProducts(false));
-    fetch("/api/orders").then((r) => r.json()).then(setOrders).finally(() => setLoadingOrders(false));
+    // Only ever store arrays — an error response ({ error }) would otherwise make
+    // products/orders a non-array and crash the .filter()/.reduce() below.
+    fetch("/api/products")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setProducts(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoadingProducts(false));
+    fetch("/api/orders")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setOrders(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoadingOrders(false));
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -187,11 +197,14 @@ export default function StorePage() {
       }, 0) / products.filter((p) => (p.reviews?.length ?? 0) > 0).length || 0
     : 0;
 
+  // `loading` gates each value so the cards show a skeleton instead of a
+  // computed 0 while the data is still being fetched (avoids a flash of zeros
+  // every time the page mounts).
   const stats = [
-    { label: "Total Revenue", value: formatCurrency(totalRevenue), icon: DollarSign, color: "emerald" },
-    { label: "Orders", value: orders.length.toString(), icon: ShoppingBag, color: "blue" },
-    { label: "Products", value: products.length.toString(), icon: Package, color: "nexus" },
-    { label: "Avg. Rating", value: avgRating > 0 ? avgRating.toFixed(1) : "—", icon: Star, color: "amber" },
+    { label: "Total Revenue", value: formatCurrency(totalRevenue), icon: DollarSign, color: "emerald", loading: loadingOrders },
+    { label: "Orders", value: orders.length.toString(), icon: ShoppingBag, color: "blue", loading: loadingOrders },
+    { label: "Products", value: products.length.toString(), icon: Package, color: "nexus", loading: loadingProducts },
+    { label: "Avg. Rating", value: avgRating > 0 ? avgRating.toFixed(1) : "—", icon: Star, color: "amber", loading: loadingProducts },
   ];
 
   return (
@@ -248,14 +261,16 @@ export default function StorePage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map(({ label, value, icon: Icon, color }) => (
+        {stats.map(({ label, value, icon: Icon, color, loading }) => (
           <div key={label} className="bg-white border border-gray-200 rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
               <div className={`w-8 h-8 rounded-xl bg-${color}-500/15 flex items-center justify-center`}>
                 <Icon className={`w-4 h-4 text-${color}-400`} />
               </div>
             </div>
-            <div className="text-2xl font-bold text-gray-900">{value}</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {loading ? <span className="inline-block h-7 w-20 rounded-md bg-gray-100 animate-pulse" /> : value}
+            </div>
             <div className="text-gray-500 text-sm mt-0.5">{label}</div>
           </div>
         ))}
@@ -391,7 +406,16 @@ export default function StorePage() {
             <div className="flex flex-col items-center justify-center py-16 bg-white border border-gray-200 rounded-2xl text-center">
               <ShoppingBag className="w-10 h-10 text-gray-200 mb-3" />
               <h3 className="text-gray-900 font-semibold mb-1">No orders yet</h3>
-              <p className="text-gray-400 text-sm">Orders will appear here once customers purchase your products.</p>
+              <p className="text-gray-400 text-sm mb-5">Share your store link to start getting sales.</p>
+              {username ? (
+                <Link href={`/${username}/store`} target="_blank">
+                  <Button variant="lime"><ExternalLink className="w-4 h-4" /> Share your store</Button>
+                </Link>
+              ) : (
+                <Link href="/store/products/new">
+                  <Button variant="lime"><Plus className="w-4 h-4" /> Add a product</Button>
+                </Link>
+              )}
             </div>
           ) : (
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">

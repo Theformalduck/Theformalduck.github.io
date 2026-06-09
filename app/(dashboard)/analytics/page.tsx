@@ -32,13 +32,17 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     fetch("/api/analytics")
-      .then(r => r.json())
+      .then(r => (r.ok ? r.json() : null))
       .then(data => {
-        setStats(data.stats);
-        setDaily(data.dailyRevenue);
-        setTopProducts(data.topProducts);
-        setByType(data.revenueByType);
+        // Tolerate error/empty responses (401 on a session blip, 500, etc.) so
+        // the page never crashes — fall back to safe, well-typed defaults.
+        if (!data) return;
+        setStats(data.stats ?? null);
+        setDaily(Array.isArray(data.dailyRevenue) ? data.dailyRevenue : []);
+        setTopProducts(Array.isArray(data.topProducts) ? data.topProducts : []);
+        setByType(Array.isArray(data.revenueByType) ? data.revenueByType : []);
       })
+      .catch(() => { /* network error — keep defaults, page still renders */ })
       .finally(() => setLoading(false));
   }, []);
 

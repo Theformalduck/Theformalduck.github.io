@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  User, Bell, CreditCard, Shield, Globe, AtSign, Share2,
+  User, Bell, CreditCard, Shield, Globe, AtSign, Share2, Download,
   ExternalLink, Check, Loader2, AlertCircle, Trash2, CheckCircle2,
 } from "lucide-react";
 import { MediaUpload } from "@/components/ui/media-upload";
@@ -480,6 +480,21 @@ export default function SettingsPage() {
                 Update Password
               </Button>
             </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+            <h3 className="text-gray-900 font-semibold mb-2">Your data</h3>
+            <p className="text-gray-500 text-sm mb-4">
+              Download a copy of the personal data we hold for your account — your profile, store,
+              products, campaigns, orders, and more — as a JSON file. Passwords and tokens are never
+              included.
+            </p>
+            <Button asChild variant="outline" size="sm">
+              <a href="/api/user/export">
+                <Download className="w-4 h-4" />
+                Download my data
+              </a>
+            </Button>
           </div>
 
           <div className="bg-red-50 border border-red-200 rounded-2xl p-6">

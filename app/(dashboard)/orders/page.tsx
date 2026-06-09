@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Download, Package, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, Package, ChevronDown, ChevronUp, Compass } from "lucide-react";
 import Link from "next/link";
 import { OrderThread } from "@/components/store/order-thread";
 
@@ -55,7 +55,13 @@ export default function MyOrdersPage() {
         <div className="py-16 text-center">
           <Package className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">No orders yet</p>
-          <p className="text-gray-400 text-sm mt-1">When you purchase products, they'll appear here.</p>
+          <p className="text-gray-400 text-sm mt-1 mb-5">When you purchase products, they'll appear here.</p>
+          <Link
+            href="/discover"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#c8e83c] text-gray-900 text-sm font-semibold hover:bg-[#b8d82c] transition-colors"
+          >
+            <Compass className="w-4 h-4" /> Discover creators
+          </Link>
         </div>
       ) : (
         <div className="space-y-3">

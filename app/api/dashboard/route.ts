@@ -24,6 +24,8 @@ export async function GET() {
     prevOrders,
     notifications,
     user,
+    productCount,
+    store,
   ] = await Promise.all([
     db.campaign.findMany({
       where: { userId },
@@ -67,6 +69,8 @@ export async function GET() {
       where: { id: userId },
       select: { id: true, name: true, username: true, image: true },
     }),
+    db.product.count({ where: { userId } }),
+    db.store.findUnique({ where: { userId }, select: { name: true } }),
   ]);
 
   const calcRevenue = (orders: Array<{ items: Array<{ price: number; quantity: number }> }>) =>
@@ -146,5 +150,12 @@ export async function GET() {
     })),
     notifications,
     user,
+    // Onboarding "success path" — drives the dashboard Get-Started checklist.
+    setup: {
+      hasUsername: !!user?.username,
+      hasStore: !!store?.name,
+      hasProduct: productCount > 0,
+      hasSale: totalOrders > 0,
+    },
   });
 }

@@ -8,6 +8,7 @@ import {
   Loader2, Bell, Package,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { GetStarted } from "@/components/dashboard/get-started";
 import { formatCurrency, formatNumber, cn } from "@/lib/utils";
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -69,7 +70,7 @@ export default function DashboardPage() {
     );
   }
 
-  const { stats, weeklyRevenue, campaigns, recentOrders, notifications } = data ?? {};
+  const { stats, weeklyRevenue, campaigns, recentOrders, notifications, setup, user } = data ?? {};
 
   const totalRaised = (campaigns ?? []).reduce((s: number, c: any) => s + c.raised, 0);
   const totalGoal = (campaigns ?? []).reduce((s: number, c: any) => s + c.goal, 0);
@@ -135,6 +136,9 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Onboarding success path — hides itself once the store is set up */}
+      <GetStarted setup={setup} username={user?.username} />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">

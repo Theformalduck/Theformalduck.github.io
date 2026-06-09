@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
-import { sendEmail, orderConfirmationEmail, lowStockEmail } from "@/lib/email";
+import { fulfillStoreOrder, fulfillCampaignBacking } from "@/lib/fulfill";
 
 export async function POST(req: NextRequest) {
   if (!stripe) {
@@ -25,225 +25,53 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Webhook error: ${err.message}` }, { status: 400 });
   }
 
-  if (event.type === "checkout.session.completed") {
+  // ── Checkout completed: backstop fulfillment ──────────────────────────────
+  // The buyer's return to the success page normally triggers /api/orders/confirm.
+  // If they never return (closed tab, async/delayed payment method), this webhook
+  // is the reliable path. Both read the same `pendingCheckout` row (keyed by the
+  // session id) and run the idempotent fulfill.ts helpers, so a race between the
+  // two can't double-create an order or pledge.
+  if (event.type === "checkout.session.completed" && (event.data.object as any).mode !== "subscription") {
     const session = event.data.object as any;
-    const { buyerId, items: itemsJson, campaignId, rewardId, amount: campaignAmount, discountCode, creatorUsername } = session.metadata ?? {};
+    if (session.payment_status !== "paid") return NextResponse.json({ received: true });
 
-    // ── Campaign backing ──────────────────────────────────────────────────────
-    if (campaignId) {
-      const existing = await db.backer.findFirst({ where: { stripePaymentId: session.id } });
-      if (!existing) {
-        const amount = parseFloat(campaignAmount ?? "0");
-        let finalBuyerId: string | null = buyerId || null;
-        if (!finalBuyerId && session.customer_details?.email) {
-          const u = await db.user.findUnique({ where: { email: session.customer_details.email }, select: { id: true } });
-          if (u) finalBuyerId = u.id;
-        }
-        if (finalBuyerId) {
-          await db.backer.create({
-            data: {
-              userId: finalBuyerId,
-              campaignId,
-              rewardId: rewardId || null,
-              amount,
-              stripePaymentId: session.id,
-              status: "completed",
-            },
-          });
-          await db.campaign.update({ where: { id: campaignId }, data: { raised: { increment: amount } } });
-          if (rewardId) {
-            await db.reward.update({ where: { id: rewardId }, data: { claimed: { increment: 1 } } });
-          }
-          const campaign = await db.campaign.findUnique({ where: { id: campaignId }, select: { userId: true, title: true } });
-          if (campaign) {
-            await db.notification.create({
-              data: {
-                userId: campaign.userId, type: "NEW_BACKER",
-                title: "New campaign backer!",
-                body: `Someone backed "${campaign.title}" with $${amount.toFixed(2)}.`,
-                data: { campaignId },
-              },
-            });
-          }
-        }
-      }
-      return NextResponse.json({ received: true });
-    }
+    const pending = await db.pendingCheckout.findUnique({ where: { id: session.id } });
+    if (!pending) return NextResponse.json({ received: true }); // confirm already cleaned it up, or not ours
 
-    // ── Store order ───────────────────────────────────────────────────────────
-    if (!itemsJson) return NextResponse.json({ received: true });
+    const data = pending.data as any;
+    const amount = (session.amount_total ?? 0) / 100;
+    const paymentIntentId =
+      typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
 
-    // Idempotency — ignore if order already created (e.g. webhook retry or fallback already ran)
-    const existing = await db.order.findFirst({ where: { stripeSessionId: session.id } });
-    if (existing) return NextResponse.json({ received: true });
-
-    const items = JSON.parse(itemsJson) as { productId: string; quantity: number }[];
-
-    const products = await db.product.findMany({
-      where: { id: { in: items.map(i => i.productId) } },
-      select: { id: true, name: true, price: true, inventory: true, userId: true, type: true, digital: true },
-    });
-
-    // Resolve buyer — registered user or guest
-    let finalBuyerId: string | null = buyerId || null;
-    let guestEmail: string | null = null;
-
-    if (!finalBuyerId && session.customer_details?.email) {
-      const buyer = await db.user.findUnique({
-        where: { email: session.customer_details.email },
-        select: { id: true },
-      });
-      if (buyer) {
-        finalBuyerId = buyer.id;
-      } else {
-        // Guest checkout — record email so seller knows who bought
-        guestEmail = session.customer_details.email;
-      }
-    }
-
-    const total = (session.amount_total ?? 0) / 100;
-
-    const order = await db.order.create({
-      data: {
-        ...(finalBuyerId ? { buyerId: finalBuyerId } : {}),
-        ...(guestEmail ? { guestEmail } : {}),
-        total,
-        status: "PENDING",
-        stripeSessionId: session.id,
-        items: {
-          create: items.map(item => {
-            const product = products.find(p => p.id === item.productId);
-            return {
-              productId: item.productId,
-              quantity: item.quantity,
-              price: product?.price ?? 0,
-            };
-          }),
-        },
-      },
-    });
-
-    // Decrement inventory for physical products
-    await Promise.all(
-      items.map(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (product?.inventory == null) return Promise.resolve();
-        return db.product.update({
-          where: { id: item.productId },
-          data: { inventory: { decrement: item.quantity } },
-        });
-      })
-    );
-
-    // Low-stock alerts — notify the seller when a product crosses their threshold.
     try {
-      const sellerStoreIds = [...new Set(products.map(p => p.userId))];
-      const stores = await db.store.findMany({ where: { userId: { in: sellerStoreIds } }, select: { userId: true, lowStockThreshold: true } });
-      const thresholdByUser = new Map(stores.map(s => [s.userId, s.lowStockThreshold ?? 5]));
-      for (const item of items) {
-        const product = products.find(p => p.id === item.productId);
-        if (!product || product.inventory == null) continue; // inventory not tracked
-        const threshold = thresholdByUser.get(product.userId) ?? 5;
-        if (threshold <= 0) continue; // alerts disabled
-        const oldInv = product.inventory;
-        const newInv = oldInv - item.quantity;
-        const crossedOut = oldInv > 0 && newInv <= 0;
-        const crossedLow = !crossedOut && oldInv > threshold && newInv <= threshold;
-        if (!crossedOut && !crossedLow) continue;
-        const outOfStock = newInv <= 0;
-        const left = Math.max(0, newInv);
-        await db.notification.create({
-          data: {
-            userId: product.userId,
-            type: "LOW_STOCK",
-            title: outOfStock ? "Product out of stock" : "Low stock alert",
-            body: outOfStock ? `"${product.name}" has sold out.` : `"${product.name}" is low — ${left} left in stock.`,
-            data: { productId: product.id, inventory: left },
-          },
+      if (pending.kind === "campaign") {
+        await fulfillCampaignBacking({
+          stripeSessionId: session.id,
+          campaignId: data.campaignId,
+          rewardId: data.rewardId ?? null,
+          amount: amount || data.amount,
+          buyerId: data.buyerId ?? null,
         });
-        const seller = await db.user.findUnique({ where: { id: product.userId }, select: { email: true } });
-        if (seller?.email) {
-          try {
-            await sendEmail({
-              to: seller.email,
-              subject: outOfStock ? `Out of stock: ${product.name}` : `Low stock: ${product.name}`,
-              html: lowStockEmail({ productName: product.name, inventory: left, productId: product.id, outOfStock }),
-            });
-          } catch (e) { console.error("[webhook] low-stock email failed:", e); }
-        }
+      } else {
+        await fulfillStoreOrder({
+          stripeSessionId: session.id,
+          stripePaymentIntentId: paymentIntentId,
+          items: data.items,
+          total: amount || data.total,
+          buyerId: data.buyerId ?? null,
+          buyerEmail: session.customer_details?.email ?? null,
+          discountCode: data.discountCode ?? null,
+          creatorUsername: data.creatorUsername ?? null,
+        });
       }
+      await db.pendingCheckout.delete({ where: { id: session.id } }).catch(() => {});
     } catch (e) {
-      console.error("[webhook] low-stock alert failed:", e);
+      // Surface a 500 so Stripe retries the webhook rather than dropping the order.
+      console.error("[stripe webhook] fulfillment failed:", e);
+      return NextResponse.json({ error: "Fulfillment failed" }, { status: 500 });
     }
 
-    // Count discount-code usage (idempotent with the order check above)
-    if (discountCode && creatorUsername) {
-      try {
-        const creator = await db.user.findUnique({ where: { username: creatorUsername }, select: { id: true } });
-        if (creator) {
-          await db.discount.updateMany({
-            where: { userId: creator.id, code: discountCode },
-            data: { usageCount: { increment: 1 } },
-          });
-        }
-      } catch (e) {
-        console.error("[webhook] failed to increment discount usage:", e);
-      }
-    }
-
-    // Notify the seller (in-app)
-    const sellerIds = [...new Set(products.map(p => p.userId))];
-    await Promise.all(
-      sellerIds.map(sellerId =>
-        db.notification.create({
-          data: {
-            userId: sellerId,
-            type: "NEW_ORDER",
-            title: "New order received!",
-            body: `You received a $${total.toFixed(2)} order${guestEmail ? ` from ${guestEmail}` : ""}.`,
-            data: { orderId: order.id },
-          },
-        })
-      )
-    );
-
-    // Send order confirmation email to buyer
-    const buyerEmail = guestEmail ?? session.customer_details?.email ?? null;
-    if (buyerEmail) {
-      try {
-        const seller = await db.user.findFirst({
-          where: { id: { in: sellerIds } },
-          select: { username: true, store: { select: { name: true } } },
-        });
-        const storeName = seller?.store?.name ?? seller?.username ?? "the store";
-        const storeUsername = seller?.username ?? "";
-        const downloads = products
-          .filter(p => p.type === "DIGITAL")
-          .map(p => {
-            const d = p.digital as { fileUrl?: string } | null;
-            return d?.fileUrl ? { productName: p.name, fileUrl: d.fileUrl } : null;
-          })
-          .filter((d): d is { productName: string; fileUrl: string } => d !== null);
-
-        await sendEmail({
-          to: buyerEmail,
-          subject: `Order confirmed — ${storeName}`,
-          html: orderConfirmationEmail({
-            id: order.id,
-            total,
-            storeName,
-            storeUsername,
-            downloads: downloads.length ? downloads : undefined,
-            items: items.map(item => {
-              const product = products.find(p => p.id === item.productId);
-              return { name: product?.name ?? "Product", quantity: item.quantity, price: product?.price ?? 0 };
-            }),
-          }),
-        });
-      } catch (e) {
-        console.error("[webhook] failed to send order confirmation:", e);
-      }
-    }
+    return NextResponse.json({ received: true });
   }
 
   // ── Subscription created via checkout ────────────────────────────────────

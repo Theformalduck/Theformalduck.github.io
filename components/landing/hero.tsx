@@ -31,6 +31,23 @@ export function Hero() {
       {/* ── Text + CTAs ───────────────────────────────────── */}
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center pt-7">
 
+        {/* Eyebrow — names the category + audience in the first glance */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-flex items-center gap-2 mb-6 px-3.5 py-1.5 rounded-full text-[12px] font-semibold"
+          style={{
+            color: "rgba(255,255,255,0.92)",
+            border: "1px solid rgba(255,255,255,0.22)",
+            background: "rgba(255,255,255,0.10)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          The all-in-one platform for creators
+        </motion.div>
+
         {/* Heading */}
         <motion.h1
           initial={{ opacity: 0, y: 24 }}
@@ -43,7 +60,7 @@ export function Hero() {
             textShadow: "0 1px 20px rgba(0,40,90,0.25)",
           }}
         >
-          Your creator business,
+          Sell products, services &amp; content
           <br />
           <span
             style={{
@@ -53,7 +70,7 @@ export function Hero() {
               backgroundClip: "text",
             }}
           >
-            all in one place.
+            all from one page.
           </span>
         </motion.h1>
 
@@ -65,8 +82,9 @@ export function Hero() {
           className="text-[17px] sm:text-lg max-w-xl mx-auto mb-10 leading-relaxed"
           style={{ color: "rgba(255,255,255,0.82)" }}
         >
-          Portfolio. Crowdfunding. Store. Community. Analytics.
-          One login, one dashboard, zero tab-switching.
+          Sellora gives creators one storefront to showcase their work, sell digital
+          &amp; physical products, run crowdfunding campaigns, and grow an audience —
+          no code, no plugins, no juggling five different tools.
         </motion.p>
 
         {/* CTA row */}
@@ -105,7 +123,7 @@ export function Hero() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 28px rgba(200,232,60,0.5), 0 2px 6px rgba(0,0,0,0.12)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = ""; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(200,232,60,0.45), 0 1px 3px rgba(0,0,0,0.1)"; }}
                 >
-                  Start for free
+                  Build your page — free
                   <ArrowRight className="w-4 h-4" />
                 </span>
               </Link>

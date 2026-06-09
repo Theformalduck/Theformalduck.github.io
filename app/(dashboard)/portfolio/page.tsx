@@ -2141,16 +2141,17 @@ function PanelSelect({ value, onChange, children, style }: {
   );
 }
 
-function Section({ title, children, defaultOpen=true }: { title:string; children:React.ReactNode; defaultOpen?:boolean }) {
+function Section({ title, children, defaultOpen=true, hint }: { title:string; children:React.ReactNode; defaultOpen?:boolean; hint?:string }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div style={{borderBottom:"1px solid #f1f5f9"}}>
+      {/* Stronger header so sections are scannable instead of all looking alike. */}
       <button onClick={()=>setOpen(v=>!v)} style={{background:"transparent"}}
-        className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 transition-colors">
-        <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">{title}</span>
-        <ChevronDown style={{width:11,height:11,color:"#6b7280",transition:"transform 0.15s",transform:open?"":"rotate(-90deg)"}} />
+        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-gray-50 transition-colors">
+        <span className="text-[11px] font-bold text-gray-700 uppercase tracking-wide">{title}</span>
+        <ChevronDown style={{width:13,height:13,color:"#9ca3af",transition:"transform 0.15s",transform:open?"":"rotate(-90deg)"}} />
       </button>
-      {open && <div className="px-3 pb-3">{children}</div>}
+      {open && <div className="px-3 pb-3">{hint && <p className="text-[10px] text-gray-400 mb-2 leading-snug">{hint}</p>}{children}</div>}
     </div>
   );
 }
@@ -3486,6 +3487,15 @@ function TopBar({
         className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 hover:shadow-sm transition-all">
         <Share2 className="w-3.5 h-3.5"/> Share Template
       </button>
+      {/* Publish status — explicit so live vs. draft is never ambiguous. */}
+      <span className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[11px] font-semibold border ${
+        isPublished
+          ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+          : "text-gray-500 bg-gray-50 border-gray-200"
+      }`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${isPublished ? "bg-emerald-500" : "bg-gray-400"}`} />
+        {isPublished ? "Live" : "Draft"}
+      </span>
       <button
         onClick={onTogglePublish}
         disabled={togglingPublish}

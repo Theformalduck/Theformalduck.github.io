@@ -44,12 +44,46 @@ type SectionId =
   | "seo"
   | "advanced";
 
-function PanelSection({ title, children }: { title: string; children: React.ReactNode }) {
+function PanelSection({
+  title,
+  children,
+  collapsible = false,
+  defaultOpen = true,
+  hint,
+}: {
+  title: string;
+  children: React.ReactNode;
+  /** When true the section can be folded away — used for advanced/optional settings. */
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  /** Optional one-line description shown under the header for scannability. */
+  hint?: string;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const isOpen = collapsible ? open : true;
+
   return (
     <div className="border-t border-gray-100 first:border-t-0">
       <div className="px-4 py-4">
-        <h3 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">{title}</h3>
-        {children}
+        {/* Stronger header hierarchy: darker, slightly larger title so sections
+            are scannable and clearly separated rather than all looking alike. */}
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="flex w-full items-center justify-between gap-2 text-left group"
+            aria-expanded={isOpen}
+          >
+            <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{title}</span>
+            <ChevronDown
+              className={`w-4 h-4 text-gray-400 transition-transform group-hover:text-gray-600 ${isOpen ? "" : "-rotate-90"}`}
+            />
+          </button>
+        ) : (
+          <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wide">{title}</h3>
+        )}
+        {hint && isOpen && <p className="text-[11px] text-gray-400 mt-1 leading-snug">{hint}</p>}
+        {isOpen && <div className="mt-3">{children}</div>}
       </div>
     </div>
   );
@@ -1740,7 +1774,7 @@ export default function StoreCustomizePage() {
       const codeCls = "w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 font-mono focus:outline-none focus:border-[#2e9cfe] resize-none";
       return (
         <>
-          <PanelSection title="Analytics">
+          <PanelSection title="Analytics" collapsible defaultOpen={false} hint="Connect Google Analytics or Meta Pixel.">
             <label className="block text-xs font-medium text-gray-600 mb-1">Google Analytics ID</label>
             <input
               value={settings.googleAnalyticsId ?? ""}
@@ -1757,7 +1791,7 @@ export default function StoreCustomizePage() {
             />
             <p className="text-xs text-gray-500 mt-2">Tracking fires on your live storefront only — never while you preview.</p>
           </PanelSection>
-          <PanelSection title="Custom Code">
+          <PanelSection title="Custom Code" collapsible defaultOpen={false} hint="Inject scripts or widgets. For advanced users.">
             <p className="text-xs text-gray-500 mb-2">
               Inject scripts or widgets (chat, pixels, verification tags). Added to the page <span className="font-medium">head</span>.
             </p>
@@ -1778,7 +1812,7 @@ export default function StoreCustomizePage() {
             />
             <p className="text-[11px] text-amber-600 mt-2">⚠ Only paste code from sources you trust — it runs on your storefront.</p>
           </PanelSection>
-          <PanelSection title="Custom CSS">
+          <PanelSection title="Custom CSS" collapsible defaultOpen={false} hint="Override store styles with your own CSS.">
             <p className="text-xs text-gray-500 mb-3">
               Add custom CSS to override any store styles.
             </p>
@@ -1826,9 +1860,14 @@ export default function StoreCustomizePage() {
           <span className="text-sm font-medium text-gray-900 truncate max-w-[180px]">{storeName}</span>
         </div>
         <div className="flex items-center gap-2">
-          {hasDraft && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Unpublished changes
+          {/* Publish status — always visible so draft vs. live is impossible to miss. */}
+          {hasDraft ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" /> Draft · unpublished changes
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Live · all changes published
             </span>
           )}
           {username && (

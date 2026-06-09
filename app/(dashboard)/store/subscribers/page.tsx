@@ -48,7 +48,10 @@ export default function SubscribersPage() {
         <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-gray-200 rounded-2xl">
           <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center mb-4"><Users className="w-7 h-7 text-gray-300" /></div>
           <p className="text-gray-900 font-semibold mb-1">No subscribers yet</p>
-          <p className="text-gray-500 text-sm">Enable the Newsletter section or a popup in your store customizer to start collecting emails.</p>
+          <p className="text-gray-500 text-sm mb-5">Turn on the Newsletter section or a popup in your store customizer to start collecting emails.</p>
+          <Link href="/store/customize">
+            <Button variant="lime"><Mail className="w-4 h-4" /> Set up email capture</Button>
+          </Link>
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-2xl divide-y divide-gray-100">
