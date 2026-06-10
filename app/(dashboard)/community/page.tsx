@@ -74,29 +74,51 @@ export default function CommunityPage() {
   const currentUser = session?.user;
 
   // Load the feed: a selected group's posts, the following feed, or the main feed.
+  // Retries a couple of times so a transient hiccup doesn't leave the page blank.
   useEffect(() => {
+    let cancelled = false;
     setLoadingPosts(true);
     const url = selectedGroup
       ? `/api/posts?group=${selectedGroup.id}`
       : feedTab === "following"
       ? "/api/posts?feed=following"
       : "/api/posts";
-    fetch(url)
-      .then((r) => (r.ok ? r.json() : { posts: [] }))
-      .then((data) => {
-        const fetched = data.posts ?? [];
-        setPosts(fetched);
-        setLikedPosts(new Set(fetched.filter((p: any) => p.likedByMe).map((p: any) => p.id)));
-      })
-      .catch(() => setPosts([]))
-      .finally(() => setLoadingPosts(false));
+    let attempt = 0;
+    const run = (): Promise<void> =>
+      fetch(url)
+        .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then((data) => {
+          if (cancelled) return;
+          const fetched = data.posts ?? [];
+          setPosts(fetched);
+          setLikedPosts(new Set(fetched.filter((p: any) => p.likedByMe).map((p: any) => p.id)));
+        })
+        .catch(async () => {
+          if (attempt < 2 && !cancelled) {
+            attempt++;
+            await new Promise((r) => setTimeout(r, 400 * attempt));
+            return run();
+          }
+          if (!cancelled) setPosts([]);
+        });
+    run().finally(() => { if (!cancelled) setLoadingPosts(false); });
+    return () => { cancelled = true; };
   }, [feedTab, selectedGroup]);
 
   const loadGroups = useCallback(() => {
-    fetch("/api/groups")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data) setGroups(data); })
-      .catch(() => {});
+    let attempt = 0;
+    const run = (): Promise<void> =>
+      fetch("/api/groups")
+        .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+        .then((data) => setGroups(data))
+        .catch(async () => {
+          if (attempt < 2) {
+            attempt++;
+            await new Promise((r) => setTimeout(r, 400 * attempt));
+            return run();
+          }
+        });
+    run();
   }, []);
 
   useEffect(() => { loadGroups(); }, [loadGroups]);

@@ -12,12 +12,19 @@ function getDb() {
     throw new Error("DATABASE_URL environment variable is not set. Add it to .env.local");
   }
 
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL,
+    // Serverless tuning: keep each instance's pool small so many concurrent
+    // Vercel functions don't exhaust the Supabase pooler's connection limit,
+    // and fail fast (rather than hang) when the pooler is momentarily saturated.
+    max: 5,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+  });
   const client = new PrismaClient({ adapter });
 
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = client;
-  }
+  // Reuse a single client across warm invocations in every environment.
+  globalForPrisma.prisma = client;
 
   return client;
 }
