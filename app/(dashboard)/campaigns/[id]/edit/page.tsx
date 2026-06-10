@@ -8,6 +8,7 @@ import {
   ArrowLeft, DollarSign, Calendar, Plus, Minus, Loader2, Trash2,
 } from "lucide-react";
 import { MediaUpload } from "@/components/ui/media-upload";
+import { MultiImageUpload } from "@/components/ui/multi-image-upload";
 
 const categories = ["Art & Design", "Education", "Software", "Photography", "Music", "Games", "Film", "Fashion", "Technology"];
 
@@ -18,9 +19,11 @@ export default function EditCampaignPage() {
 
   const [form, setForm] = useState({
     title: "", description: "", shortDesc: "", goal: "",
-    deadline: "", category: "", coverImage: "",
+    deadline: "", category: "", coverImage: "", images: [] as string[],
   });
   const [tiers, setTiers] = useState<{ id: string; amount: number; title: string; perks: string; limit: number | null }[]>([]);
+  const [faq, setFaq] = useState<{ question: string; answer: string }[]>([]);
+  const [stretch, setStretch] = useState<{ amount: string; title: string; description: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -42,6 +45,7 @@ export default function EditCampaignPage() {
           deadline: c.deadline ? new Date(c.deadline).toISOString().split("T")[0] : "",
           category: c.category ?? "",
           coverImage: c.coverImage ?? "",
+          images: Array.isArray(c.images) ? c.images : [],
         });
         setTiers((c.rewards ?? []).map((r: any) => ({
           id: r.id,
@@ -50,6 +54,10 @@ export default function EditCampaignPage() {
           perks: r.description,
           limit: r.limit ?? null,
         })));
+        setFaq(Array.isArray(c.faq) ? c.faq.map((f: any) => ({ question: f.question ?? "", answer: f.answer ?? "" })) : []);
+        setStretch(Array.isArray(c.stretchGoals)
+          ? c.stretchGoals.map((s: any) => ({ amount: String(s.amount ?? ""), title: s.title ?? "", description: s.description ?? "" }))
+          : []);
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -67,6 +75,10 @@ export default function EditCampaignPage() {
           goal: Number(form.goal),
           ...(status && { status }),
           rewards: tiers.filter(t => t.title),
+          faq: faq.filter(f => f.question.trim() && f.answer.trim()),
+          stretchGoals: stretch
+            .filter(s => s.title.trim() && Number(s.amount) > 0)
+            .map(s => ({ amount: Number(s.amount), title: s.title, description: s.description })),
         }),
       });
       if (!res.ok) {
@@ -138,7 +150,8 @@ export default function EditCampaignPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Description *</label>
             <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-              rows={5} className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 resize-none" />
+              rows={10} className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-nexus-500 resize-y min-h-[160px]" />
+            <p className="text-gray-400 text-xs mt-1">{form.description.length.toLocaleString()} characters</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -153,6 +166,10 @@ export default function EditCampaignPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Cover Image</label>
             <MediaUpload value={form.coverImage} onChange={url => setForm({ ...form, coverImage: url })} accept="image" compact allowYoutube={false} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">More images <span className="text-gray-400 font-normal">(gallery)</span></label>
+            <MultiImageUpload value={form.images} onChange={urls => setForm({ ...form, images: urls })} />
           </div>
         </div>
 
@@ -210,6 +227,57 @@ export default function EditCampaignPage() {
             onClick={() => setTiers([...tiers, { id: `new-${Date.now()}`, amount: 25, title: "", perks: "", limit: null }])}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-200 text-gray-400 hover:text-gray-700 hover:border-nexus-200 transition-all text-sm">
             <Plus className="w-4 h-4" />Add reward tier
+          </button>
+        </div>
+
+        {/* FAQ */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <h2 className="text-gray-900 font-semibold mb-1">FAQ <span className="text-gray-400 font-normal text-sm">(optional)</span></h2>
+          <p className="text-gray-400 text-xs mb-4">Answer common questions backers might have.</p>
+          <div className="space-y-3 mb-3">
+            {faq.map((f, i) => (
+              <div key={i} className="p-3 rounded-xl border border-gray-200 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input value={f.question} onChange={(e) => setFaq(faq.map((x, j) => j === i ? { ...x, question: e.target.value } : x))}
+                    placeholder="Question" className="flex-1 h-8 px-3 rounded-lg bg-gray-50 border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-nexus-500 placeholder:text-gray-400" />
+                  <button onClick={() => setFaq(faq.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-400 transition-colors"><Minus className="w-4 h-4" /></button>
+                </div>
+                <textarea value={f.answer} onChange={(e) => setFaq(faq.map((x, j) => j === i ? { ...x, answer: e.target.value } : x))}
+                  placeholder="Answer" rows={2} className="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-nexus-500 placeholder:text-gray-400" />
+              </div>
+            ))}
+          </div>
+          <button onClick={() => setFaq([...faq, { question: "", answer: "" }])}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-200 text-gray-400 hover:text-gray-700 hover:border-nexus-200 transition-all text-sm">
+            <Plus className="w-4 h-4" />Add FAQ
+          </button>
+        </div>
+
+        {/* Stretch goals */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <h2 className="text-gray-900 font-semibold mb-1">Stretch goals <span className="text-gray-400 font-normal text-sm">(optional)</span></h2>
+          <p className="text-gray-400 text-xs mb-4">Milestones that unlock as funding grows past your goal.</p>
+          <div className="space-y-3 mb-3">
+            {stretch.map((s, i) => (
+              <div key={i} className="p-3 rounded-xl border border-gray-200 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="relative w-28 flex-shrink-0">
+                    <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    <input type="number" value={s.amount} onChange={(e) => setStretch(stretch.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
+                      placeholder="Amount" min="1" className="w-full h-8 pl-7 pr-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-nexus-500 placeholder:text-gray-400" />
+                  </div>
+                  <input value={s.title} onChange={(e) => setStretch(stretch.map((x, j) => j === i ? { ...x, title: e.target.value } : x))}
+                    placeholder="Goal title" className="flex-1 h-8 px-3 rounded-lg bg-gray-50 border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-1 focus:ring-nexus-500 placeholder:text-gray-400" />
+                  <button onClick={() => setStretch(stretch.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-400 transition-colors"><Minus className="w-4 h-4" /></button>
+                </div>
+                <input value={s.description} onChange={(e) => setStretch(stretch.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
+                  placeholder="What unlocks at this amount…" className="w-full h-8 px-3 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 text-sm focus:outline-none focus:ring-1 focus:ring-nexus-500 placeholder:text-gray-400" />
+              </div>
+            ))}
+          </div>
+          <button onClick={() => setStretch([...stretch, { amount: "", title: "", description: "" }])}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-gray-200 text-gray-400 hover:text-gray-700 hover:border-nexus-200 transition-all text-sm">
+            <Plus className="w-4 h-4" />Add stretch goal
           </button>
         </div>
 

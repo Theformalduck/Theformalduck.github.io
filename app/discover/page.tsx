@@ -20,35 +20,38 @@ function initials(name?: string | null, username?: string | null) {
 }
 
 export default async function DiscoverPage() {
-  // Published creator portfolios
-  const creators = await db.user.findMany({
-    where: { username: { not: null }, bannedAt: null, portfolio: { published: true } },
-    select: {
-      username: true, name: true, image: true, bio: true, verified: true,
-      portfolio: { select: { title: true, canvasData: true, primaryColor: true } },
-      _count: { select: { followers: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 24,
-  });
-
-  // Shops — users with at least one active product
-  const shops = await db.user.findMany({
-    where: { username: { not: null }, bannedAt: null, products: { some: { status: "ACTIVE" } } },
-    select: {
-      username: true, name: true, image: true, verified: true,
-      store: { select: { name: true, tagline: true, logoImage: true, bannerImage: true, primaryColor: true } },
-      products: {
-        where: { status: "ACTIVE" },
-        take: 16,
-        orderBy: { createdAt: "desc" },
-        select: { id: true, name: true, price: true, images: true },
+  // Fetch portfolios and shops in parallel — they're independent, so there's no
+  // reason to wait for one before starting the other.
+  const [creators, shops] = await Promise.all([
+    // Published creator portfolios
+    db.user.findMany({
+      where: { username: { not: null }, bannedAt: null, portfolio: { published: true } },
+      select: {
+        username: true, name: true, image: true, bio: true, verified: true,
+        portfolio: { select: { title: true, canvasData: true, primaryColor: true } },
+        _count: { select: { followers: true } },
       },
-      _count: { select: { products: { where: { status: "ACTIVE" } } } },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 24,
-  });
+      orderBy: { updatedAt: "desc" },
+      take: 24,
+    }),
+    // Shops — users with at least one active product
+    db.user.findMany({
+      where: { username: { not: null }, bannedAt: null, products: { some: { status: "ACTIVE" } } },
+      select: {
+        username: true, name: true, image: true, verified: true,
+        store: { select: { name: true, tagline: true, logoImage: true, bannerImage: true, primaryColor: true } },
+        products: {
+          where: { status: "ACTIVE" },
+          take: 16,
+          orderBy: { createdAt: "desc" },
+          select: { id: true, name: true, price: true, images: true },
+        },
+        _count: { select: { products: { where: { status: "ACTIVE" } } } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 24,
+    }),
+  ]);
 
   const portfolioBg = (c: typeof creators[number]) => {
     const data = c.portfolio?.canvasData as any;

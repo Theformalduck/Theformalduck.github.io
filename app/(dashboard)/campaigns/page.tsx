@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   Plus, Rocket, Users, Clock, TrendingUp, Search, MoreHorizontal,
   Eye, Edit3, Share2, Trash2, DollarSign, CheckCircle, Loader2,
@@ -166,12 +165,17 @@ export default function CampaignsPage() {
             const isDeleting = deleting === c.id;
 
             return (
-              <div key={c.id} className={cn("bg-white border border-gray-200 rounded-2xl p-5 transition-all", isDeleting && "opacity-50 pointer-events-none")}>
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-nexus-500/15 border border-nexus-500/20 flex items-center justify-center text-2xl flex-shrink-0">
-                    🚀
+              <div key={c.id} className={cn("group bg-white border border-gray-200 rounded-2xl p-4 transition-all hover:border-nexus-300 hover:shadow-md", isDeleting && "opacity-50 pointer-events-none")}>
+                <div className="flex items-stretch gap-4">
+                  <div className="w-28 sm:w-36 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-nexus-500/15 to-cyan-500/10 flex items-center justify-center">
+                    {c.coverImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.coverImage} alt={c.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
+                    ) : (
+                      <Rocket className="w-7 h-7 text-nexus-400/70" />
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex flex-col">
                     <div className="flex items-start justify-between gap-2 mb-1.5">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -232,34 +236,43 @@ export default function CampaignsPage() {
                       </DropdownMenu.Root>
                     </div>
 
-                    <div className="mt-3">
-                      <Progress value={progress} variant={c.status === "FUNDED" ? "success" : "gradient"} className="h-1.5 mb-2" />
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="text-emerald-400 font-semibold">{formatCurrency(c.raised)}</span>
-                        <span className="text-gray-400">of {formatCurrency(c.goal)} goal</span>
-                        <span className={cn("font-semibold", c.status === "FUNDED" ? "text-emerald-400" : "text-nexus-600")}>
+                    <div className="mt-auto pt-3">
+                      <div className="flex items-end justify-between gap-3 mb-1.5">
+                        <div className="flex items-baseline gap-1.5 min-w-0">
+                          <span className="text-gray-900 font-bold">{formatCurrency(c.raised)}</span>
+                          <span className="text-gray-400 text-xs truncate">of {formatCurrency(c.goal)} goal</span>
+                        </div>
+                        <span className={cn("text-sm font-bold flex-shrink-0", c.status === "FUNDED" ? "text-emerald-600" : "text-nexus-600")}>
                           {progress}%
                         </span>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                      <div className="flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" />
-                        {formatNumber(c._count?.backers ?? 0)} backers
+                      <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            c.status === "FUNDED" ? "bg-emerald-500" : "bg-gradient-to-r from-nexus-600 to-cyan-500"
+                          )}
+                          style={{ width: `${progress}%` }}
+                        />
                       </div>
-                      {days !== null && c.status !== "FUNDED" && (
-                        <div className={cn("flex items-center gap-1", days < 7 ? "text-amber-400" : "")}>
-                          <Clock className="w-3.5 h-3.5" />
-                          {days === 0 ? "Ended" : `${days} days left`}
-                        </div>
-                      )}
-                      {c.status === "FUNDED" && (
-                        <div className="flex items-center gap-1 text-emerald-400">
-                          <TrendingUp className="w-3.5 h-3.5" />
-                          {Math.round((c.raised / c.goal) * 100)}% funded
-                        </div>
-                      )}
+                      <div className="flex items-center gap-4 mt-2.5 text-xs text-gray-400">
+                        <span className="inline-flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5" />
+                          {formatNumber(c._count?.backers ?? 0)} backers
+                        </span>
+                        {days !== null && c.status !== "FUNDED" && (
+                          <span className={cn("inline-flex items-center gap-1", days < 7 && "text-amber-500")}>
+                            <Clock className="w-3.5 h-3.5" />
+                            {days === 0 ? "Ended" : `${days} days left`}
+                          </span>
+                        )}
+                        {c.status === "FUNDED" && (
+                          <span className="inline-flex items-center gap-1 text-emerald-500">
+                            <TrendingUp className="w-3.5 h-3.5" />
+                            Funded
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

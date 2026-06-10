@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { sanitizeField, sanitizeUrl } from "@/lib/sanitize";
+import { sanitizeField, sanitizeUrl, sanitizeArray } from "@/lib/sanitize";
+import { normalizeFaq, normalizeStretchGoals } from "@/lib/campaign-extras";
 
 export async function GET() {
   const session = await auth();
@@ -31,8 +33,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const title       = sanitizeField(body.title, 200);
     const shortDesc   = sanitizeField(body.shortDesc, 300) || null;
-    const description = sanitizeField(body.description, 20000);
+    const description = sanitizeField(body.description, 50000);
     const coverImage  = sanitizeUrl(body.coverImage);
+    const images      = sanitizeArray(body.images, true, 2000).slice(0, 12);
     const { goal, deadline, category, status, rewards } = body;
 
     if (!title || !description || !goal) {
@@ -49,7 +52,10 @@ export async function POST(req: NextRequest) {
         deadline: deadline ? new Date(deadline) : null,
         category: category ?? null,
         coverImage: coverImage ?? null,
+        images,
         status: status === "ACTIVE" ? "ACTIVE" : "DRAFT",
+        faq: normalizeFaq(body.faq) as unknown as Prisma.InputJsonValue,
+        stretchGoals: normalizeStretchGoals(body.stretchGoals) as unknown as Prisma.InputJsonValue,
         rewards: rewards?.length
           ? {
               create: rewards.map((r: any) => ({

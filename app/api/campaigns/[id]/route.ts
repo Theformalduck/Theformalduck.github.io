@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { sanitizeField, sanitizeUrl } from "@/lib/sanitize";
+import { sanitizeField, sanitizeUrl, sanitizeArray } from "@/lib/sanitize";
+import { normalizeFaq, normalizeStretchGoals } from "@/lib/campaign-extras";
 
 async function ownsCampaign(userId: string, campaignId: string) {
   const c = await db.campaign.findUnique({ where: { id: campaignId }, select: { userId: true } });
@@ -39,8 +41,9 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
     const { goal, deadline, category, status } = body;
     const title       = body.title !== undefined ? sanitizeField(body.title, 200) : undefined;
     const shortDesc   = body.shortDesc !== undefined ? (sanitizeField(body.shortDesc, 300) || null) : undefined;
-    const description = body.description !== undefined ? sanitizeField(body.description, 20000) : undefined;
+    const description = body.description !== undefined ? sanitizeField(body.description, 50000) : undefined;
     const coverImage  = body.coverImage !== undefined ? sanitizeUrl(body.coverImage) : undefined;
+    const images      = body.images !== undefined ? sanitizeArray(body.images, true, 2000).slice(0, 12) : undefined;
 
     const campaign = await db.campaign.update({
       where: { id },
@@ -52,7 +55,10 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
         ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
         ...(category !== undefined && { category }),
         ...(coverImage !== undefined && { coverImage: coverImage ?? null }),
+        ...(images !== undefined && { images }),
         ...(status !== undefined && { status }),
+        ...(body.faq !== undefined && { faq: normalizeFaq(body.faq) as unknown as Prisma.InputJsonValue }),
+        ...(body.stretchGoals !== undefined && { stretchGoals: normalizeStretchGoals(body.stretchGoals) as unknown as Prisma.InputJsonValue }),
       },
       include: { rewards: true, _count: { select: { backers: true } } },
     });

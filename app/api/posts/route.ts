@@ -21,9 +21,28 @@ export async function GET(req: NextRequest) {
     });
     const followedSet = new Set(followedIds.map((f) => f.followingId));
 
-    const whereClause = feed === "following"
-      ? { userId: { in: [...followedSet] } }
-      : undefined;
+    const group = searchParams.get("group");
+    let whereClause: Record<string, unknown>;
+    if (group) {
+      // Group feed — private groups are members-only.
+      const g = await db.group.findUnique({ where: { id: group }, select: { visibility: true } });
+      if (!g) return NextResponse.json({ posts: [], nextCursor: null });
+      if (g.visibility === "PRIVATE") {
+        const member = await db.groupMember.findUnique({
+          where: { groupId_userId: { groupId: group, userId } },
+          select: { status: true },
+        });
+        if (member?.status !== "ACTIVE") {
+          return NextResponse.json({ error: "Not a member of this group", posts: [], nextCursor: null }, { status: 403 });
+        }
+      }
+      whereClause = { groupId: group };
+    } else if (feed === "following") {
+      // Main feed only — group posts stay inside their groups.
+      whereClause = { groupId: null, userId: { in: [...followedSet] } };
+    } else {
+      whereClause = { groupId: null };
+    }
 
     const posts = await db.post.findMany({
       take,
@@ -69,9 +88,21 @@ export async function POST(req: NextRequest) {
     const content = sanitizeField(body.content, 5000);
     const tags    = sanitizeArray(body.tags, false, 50);
     const images  = sanitizeArray(body.images, true);
+    const groupId = typeof body.groupId === "string" && body.groupId ? body.groupId : null;
 
     if (!content) {
       return NextResponse.json({ error: "content is required" }, { status: 400 });
+    }
+
+    // Posting into a group requires active membership.
+    if (groupId) {
+      const member = await db.groupMember.findUnique({
+        where: { groupId_userId: { groupId, userId: session.user.id } },
+        select: { status: true },
+      });
+      if (member?.status !== "ACTIVE") {
+        return NextResponse.json({ error: "You must be a member of this group to post." }, { status: 403 });
+      }
     }
 
     const post = await db.post.create({
@@ -80,6 +111,7 @@ export async function POST(req: NextRequest) {
         content,
         tags,
         images,
+        ...(groupId && { groupId }),
       },
       include: {
         user: { select: { id: true, name: true, username: true, image: true, role: true } },

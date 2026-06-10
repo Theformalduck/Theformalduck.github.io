@@ -1,28 +1,16 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   TrendingUp, TrendingDown, DollarSign, Users, ShoppingBag, Rocket,
   Plus, ArrowUpRight, Heart, MessageSquare, Star, CheckCircle2, Circle,
-  Loader2, Bell, Package,
+  Loader2, Bell, Package, BarChart3,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { GetStarted } from "@/components/dashboard/get-started";
 import { formatCurrency, formatNumber, cn } from "@/lib/utils";
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-
-function PillBar(props: any) {
-  const { x, y, width, height, fill } = props;
-  if (!height || height <= 0) return null;
-  const r = Math.min(width / 2, 10);
-  return (
-    <g>
-      <rect x={x} y={y + r} width={width} height={Math.max(height - r, 0)} fill={fill} />
-      <ellipse cx={x + r} cy={y + r} rx={r} ry={r} fill={fill} />
-    </g>
-  );
-}
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 function ProgressRing({ value, color, size = 80 }: { value: number; color: string; size?: number }) {
   const r = (size - 10) / 2;
@@ -54,13 +42,38 @@ function timeAgo(date: string | Date) {
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then(setData)
-      .finally(() => setLoading(false));
+  // Load the dashboard, retrying a couple of times so a transient error (e.g. a
+  // 401 session blip on navigation) self-heals instead of rendering all-zeros.
+  const load = useCallback(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    let attempt = 0;
+    const run = (): Promise<void> =>
+      fetch("/api/dashboard")
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json();
+        })
+        .then((d) => {
+          if (d?.error) throw new Error(d.error);
+          if (!cancelled) setData(d);
+        })
+        .catch(async () => {
+          if (attempt < 2) {
+            attempt++;
+            await new Promise((res) => setTimeout(res, 400 * attempt));
+            if (!cancelled) return run();
+          }
+          if (!cancelled) setError(true);
+        });
+    run().finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => load(), [load]);
 
   if (loading) {
     return (
@@ -70,7 +83,23 @@ export default function DashboardPage() {
     );
   }
 
-  const { stats, weeklyRevenue, campaigns, recentOrders, notifications, setup, user } = data ?? {};
+  // Never paint a zeroed dashboard from a failed/empty response — show a retry instead.
+  if (error || !data?.stats) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center h-64 text-center">
+        <p className="text-gray-600 font-medium mb-1">We couldn&apos;t load your dashboard.</p>
+        <p className="text-gray-400 text-sm mb-4">This is usually a brief hiccup — try again.</p>
+        <button
+          onClick={load}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2e9cfe] text-white text-sm font-semibold hover:bg-[#1a8cf0] transition-colors"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  const { stats, weeklyRevenue, campaigns, recentOrders, notifications, setup, user } = data;
 
   const totalRaised = (campaigns ?? []).reduce((s: number, c: any) => s + c.raised, 0);
   const totalGoal = (campaigns ?? []).reduce((s: number, c: any) => s + c.goal, 0);
@@ -215,24 +244,44 @@ export default function DashboardPage() {
             <span className="text-gray-400 text-[13px]">total this week</span>
           </div>
           {weeklyRevenue && weeklyRevenue.some((d: any) => d.revenue > 0) ? (
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={weeklyRevenue} barCategoryGap="30%" margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
-                <XAxis dataKey="day" tick={{ fill: "#9ca3af", fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} />
+            <ResponsiveContainer width="100%" height={176}>
+              <BarChart data={weeklyRevenue} barCategoryGap="26%" margin={{ top: 12, right: 4, left: 4, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="dashRevBar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#48abff" />
+                    <stop offset="100%" stopColor="#2e9cfe" />
+                  </linearGradient>
+                </defs>
+                {/* Faint horizontal guides give the plot structure without clutter. */}
+                <CartesianGrid vertical={false} stroke="#f1f5f9" strokeDasharray="3 3" />
+                <XAxis dataKey="day" tick={{ fill: "#9ca3af", fontSize: 11, fontWeight: 500 }} axisLine={false} tickLine={false} dy={6} />
+                {/* Hidden axis purely for headroom so the tallest bar isn't flush to the top. */}
+                <YAxis hide domain={[0, (max: number) => Math.max(max * 1.25, 10)]} />
                 <Tooltip
-                  cursor={{ fill: "transparent" }}
+                  cursor={{ fill: "rgba(46,156,254,0.06)" }}
                   contentStyle={{ background: "#ffffff", border: "1px solid #f1f5f9", borderRadius: "10px", color: "#111827", fontSize: "12px", boxShadow: "0 4px 20px rgba(0,0,0,0.08)", padding: "8px 12px" }}
-                  formatter={(v) => [`$${Number(v).toLocaleString()}`, "Revenue"]}
+                  labelStyle={{ color: "#6b7280", fontWeight: 500, marginBottom: 2 }}
+                  // Show the full date so the single-letter axis labels (two S / two T) are never ambiguous.
+                  labelFormatter={(_label, payload) => {
+                    const iso = payload?.[0]?.payload?.date;
+                    if (!iso) return _label as string;
+                    return new Date(iso).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+                  }}
+                  formatter={(v) => [formatCurrency(Number(v)), "Revenue"]}
                 />
-                <Bar dataKey="revenue" shape={<PillBar />} maxBarSize={36}>
+                {/* A full-height track behind every day so quiet days read as intentional, not broken. */}
+                <Bar dataKey="revenue" radius={[5, 5, 0, 0]} maxBarSize={30} background={{ fill: "#f4f7fb", radius: 5 }}>
                   {weeklyRevenue.map((entry: any, i: number) => (
-                    <Cell key={i} fill={entry.peak ? "#2e9cfe" : "#e0f2fe"} />
+                    <Cell key={i} fill={entry.peak ? "url(#dashRevBar)" : "#c4def9"} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-40 flex items-center justify-center text-gray-400 text-sm">
-              No revenue data yet. Orders will appear here.
+            <div className="h-44 flex flex-col items-center justify-center text-center">
+              <BarChart3 className="w-7 h-7 text-gray-200 mb-2" />
+              <p className="text-gray-400 text-sm">No revenue this week yet</p>
+              <p className="text-gray-300 text-xs mt-0.5">Sales will chart here as orders come in.</p>
             </div>
           )}
         </div>

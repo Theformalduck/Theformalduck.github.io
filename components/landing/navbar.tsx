@@ -9,6 +9,7 @@ import { SelloraIcon } from "@/components/ui/logo";
 
 const navLinks = [
   { href: "/discover", label: "Discover" },
+  { href: "/discover/campaigns", label: "Campaigns" },
   { href: "/#features", label: "Features" },
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#pricing", label: "Pricing" },

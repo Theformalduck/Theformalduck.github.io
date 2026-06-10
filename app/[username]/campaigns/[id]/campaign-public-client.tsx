@@ -5,20 +5,28 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Users, Calendar, Target, CheckCircle2,
-  Loader2, AlertCircle, ChevronDown, ChevronUp, Gift,
+  Loader2, AlertCircle, Gift, FileText, Megaphone, HelpCircle,
+  MessageSquare, Trash2, Send,
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
-import { getInitials } from "@/lib/utils";
+import { formatCurrency, getInitials, cn } from "@/lib/utils";
+import type { FaqItem, StretchGoal } from "@/lib/campaign-extras";
 
 interface Reward { id: string; title: string; description: string; amount: number; limit: number | null; claimed: number }
 interface Update { id: string; title: string; body: string; createdAt: string }
+interface CommentItem {
+  id: string; body: string; createdAt: string; userId: string;
+  user: { name: string | null; username: string | null; image: string | null };
+}
 interface Campaign {
   id: string; title: string; shortDesc: string | null; description: string;
-  coverImage: string | null; videoUrl: string | null;
+  coverImage: string | null; videoUrl: string | null; images: string[];
   goal: number; raised: number; category: string | null; deadline: string | null;
   rewards: Reward[]; updates: Update[];
+  faq: FaqItem[]; stretchGoals: StretchGoal[];
   _count: { backers: number };
 }
+
+type Tab = "story" | "updates" | "faq" | "comments";
 interface Creator { id: string; name: string | null; username: string | null; image: string | null; bio: string | null }
 
 function timeLeft(deadline: string | null) {
@@ -54,11 +62,61 @@ export default function CampaignPublicClient({
   const [customAmount, setCustomAmount] = useState("");
   const [backing, setBacking] = useState(false);
   const [backError, setBackError] = useState("");
-  const [showUpdates, setShowUpdates] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  const [tab, setTab] = useState<Tab>("story");
+  const [comments, setComments] = useState<CommentItem[] | null>(null);
+  const [commentText, setCommentText] = useState("");
+  const [postingComment, setPostingComment] = useState(false);
 
   const pct = Math.min(100, Math.round((campaign.raised / campaign.goal) * 100));
   const remaining = timeLeft(campaign.deadline);
+
+  // Hero = cover (or first gallery image as fallback); gallery shows the rest.
+  const heroImage = campaign.coverImage || campaign.images[0] || null;
+  const galleryImages = campaign.images.filter((src) => src !== heroImage);
+
+  // Lazy-load comments the first time the Comments tab is opened.
+  useEffect(() => {
+    if (tab !== "comments" || comments !== null) return;
+    fetch(`/api/campaigns/${campaign.id}/comments`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setComments(Array.isArray(d) ? d : []))
+      .catch(() => setComments([]));
+  }, [tab, comments, campaign.id]);
+
+  const postComment = async () => {
+    const body = commentText.trim();
+    if (!body) return;
+    setPostingComment(true);
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to post comment");
+      setComments((prev) => [data, ...(prev ?? [])]);
+      setCommentText("");
+    } catch (err: any) {
+      setToast(err.message ?? "Failed to post comment");
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  const deleteComment = async (id: string) => {
+    setComments((prev) => (prev ?? []).filter((c) => c.id !== id));
+    await fetch(`/api/campaigns/${campaign.id}/comments/${id}`, { method: "DELETE" }).catch(() => {});
+  };
+
+  const tabs: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }>; count?: number }[] = [
+    { id: "story", label: "Story", icon: FileText },
+    { id: "updates", label: "Updates", icon: Megaphone, count: campaign.updates.length },
+    { id: "faq", label: "FAQ", icon: HelpCircle, count: campaign.faq.length },
+    { id: "comments", label: "Comments", icon: MessageSquare, count: comments?.length },
+  ];
 
   useEffect(() => {
     if (justBacked) {
@@ -126,10 +184,25 @@ export default function CampaignPublicClient({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: campaign info */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Cover */}
-            {campaign.coverImage && (
+            {/* Cover + gallery */}
+            {heroImage && (
               <div className="rounded-2xl overflow-hidden aspect-video bg-gray-100">
-                <img src={campaign.coverImage} alt={campaign.title} className="w-full h-full object-cover" />
+                <img src={heroImage} alt={campaign.title} className="w-full h-full object-cover" />
+              </div>
+            )}
+            {galleryImages.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+                {galleryImages.map((src, i) => (
+                  <a
+                    key={i}
+                    href={src}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-100 hover:opacity-90 transition-opacity"
+                  >
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                  </a>
+                ))}
               </div>
             )}
 
@@ -153,32 +226,132 @@ export default function CampaignPublicClient({
               </div>
             </div>
 
-            {/* Description */}
-            <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
-              {campaign.description}
+            {/* Tabs */}
+            <div className="border-b border-gray-200 flex items-center gap-1 overflow-x-auto">
+              {tabs.map(({ id, label, icon: Icon, count }) => (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors",
+                    tab === id
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-800"
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                  {typeof count === "number" && count > 0 && (
+                    <span className="text-xs text-gray-400">({count})</span>
+                  )}
+                </button>
+              ))}
             </div>
 
-            {/* Updates */}
-            {campaign.updates.length > 0 && (
-              <div className="border border-gray-200 rounded-2xl overflow-hidden">
-                <button
-                  onClick={() => setShowUpdates(!showUpdates)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-semibold text-gray-800 text-sm">Updates ({campaign.updates.length})</span>
-                  {showUpdates ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-                </button>
-                {showUpdates && (
-                  <div className="divide-y divide-gray-100">
-                    {campaign.updates.map((u) => (
-                      <div key={u.id} className="px-5 py-4">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="font-semibold text-gray-800 text-sm">{u.title}</p>
-                          <span className="text-gray-400 text-xs">{timeAgo(u.createdAt)}</span>
-                        </div>
-                        <p className="text-gray-600 text-sm leading-relaxed">{u.body}</p>
+            {/* Tab: Story */}
+            {tab === "story" && (
+              <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
+                {campaign.description}
+              </div>
+            )}
+
+            {/* Tab: Updates */}
+            {tab === "updates" && (
+              campaign.updates.length === 0 ? (
+                <p className="text-gray-400 text-sm py-8 text-center">No updates yet.</p>
+              ) : (
+                <div className="divide-y divide-gray-100 border border-gray-200 rounded-2xl overflow-hidden">
+                  {campaign.updates.map((u) => (
+                    <div key={u.id} className="px-5 py-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-semibold text-gray-800 text-sm">{u.title}</p>
+                        <span className="text-gray-400 text-xs">{timeAgo(u.createdAt)}</span>
                       </div>
-                    ))}
+                      <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{u.body}</p>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Tab: FAQ */}
+            {tab === "faq" && (
+              campaign.faq.length === 0 ? (
+                <p className="text-gray-400 text-sm py-8 text-center">No FAQ yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {campaign.faq.map((f, i) => (
+                    <details key={i} className="group border border-gray-200 rounded-xl overflow-hidden">
+                      <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none font-medium text-gray-800 text-sm hover:bg-gray-50">
+                        {f.question}
+                        <HelpCircle className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                      </summary>
+                      <p className="px-4 pb-4 text-gray-600 text-sm leading-relaxed whitespace-pre-line">{f.answer}</p>
+                    </details>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Tab: Comments */}
+            {tab === "comments" && (
+              <div className="space-y-4">
+                {currentUserId ? (
+                  <div className="flex flex-col gap-2">
+                    <textarea
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Leave a comment for the creator and backers…"
+                      rows={3}
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                    />
+                    <button
+                      onClick={postComment}
+                      disabled={postingComment || !commentText.trim()}
+                      className="self-end inline-flex items-center gap-1.5 px-4 h-9 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-semibold text-sm transition-colors disabled:opacity-50"
+                    >
+                      {postingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      Post
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-gray-50 border border-gray-200 p-3 text-sm text-gray-500 text-center">
+                    <Link href="/login" className="text-blue-600 font-medium hover:underline">Sign in</Link> to join the conversation.
+                  </div>
+                )}
+
+                {comments === null ? (
+                  <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
+                ) : comments.length === 0 ? (
+                  <p className="text-gray-400 text-sm py-8 text-center">No comments yet. Be the first!</p>
+                ) : (
+                  <div className="space-y-3">
+                    {comments.map((c) => {
+                      const canDelete = currentUserId === c.userId || currentUserId === creator.id;
+                      return (
+                        <div key={c.id} className="flex items-start gap-3">
+                          {c.user.image ? (
+                            <img src={c.user.image} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              {getInitials(c.user.name ?? c.user.username ?? "?")}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-800 font-semibold text-sm">{c.user.name ?? c.user.username ?? "User"}</span>
+                              <span className="text-gray-400 text-xs">{timeAgo(c.createdAt)}</span>
+                              {canDelete && (
+                                <button onClick={() => deleteComment(c.id)} className="ml-auto text-gray-300 hover:text-red-500 transition-colors" title="Delete comment">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                            <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{c.body}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -297,6 +470,34 @@ export default function CampaignPublicClient({
                 </div>
               )}
             </div>
+
+            {/* Stretch goals */}
+            {campaign.stretchGoals.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-2xl p-5">
+                <h3 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5 mb-3">
+                  <Target className="w-4 h-4 text-blue-500" /> Stretch goals
+                </h3>
+                <div className="space-y-2.5">
+                  {campaign.stretchGoals.map((g, i) => {
+                    const reached = campaign.raised >= g.amount;
+                    return (
+                      <div key={i} className="flex items-start gap-2.5">
+                        <div className={cn("mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0", reached ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-400")}>
+                          {reached ? <CheckCircle2 className="w-3.5 h-3.5" /> : <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={cn("text-sm font-semibold", reached ? "text-gray-900" : "text-gray-700")}>{formatCurrency(g.amount)}</span>
+                            <span className="text-gray-500 text-sm truncate">{g.title}</span>
+                          </div>
+                          {g.description && <p className="text-gray-400 text-xs leading-relaxed">{g.description}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

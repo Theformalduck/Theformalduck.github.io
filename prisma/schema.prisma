@@ -50,6 +50,9 @@ model User {
   subscriptions          Subscription[] @relation("UserSubscriptions")
   creatorSubscriptions   Subscription[] @relation("CreatorSubscriptions")
   communityTemplates     CommunityTemplate[]
+  campaignComments       CampaignComment[]
+  ownedGroups            Group[]       @relation("GroupOwner")
+  groupMemberships       GroupMember[]
   teamStaff              TeamMember[] @relation("AccountStaff")      // people who work for this account
   staffMemberships       TeamMember[] @relation("StaffMemberships")  // accounts this user works for
   reports                Report[]     @relation("Reports")           // reports this user filed
@@ -175,15 +178,21 @@ model Campaign {
   status       CampaignStatus @default(DRAFT)
   deadline     DateTime?
   stripeProductId String?
+  images       String[]       @default([]) // gallery images (in addition to coverImage)
+  faq          Json    @default("[]") // [{ question, answer }]
+  stretchGoals Json    @default("[]") // [{ amount, title, description }]
 
   rewards      Reward[]
   updates      CampaignUpdate[]
   backers      Backer[]
+  comments     CampaignComment[]
   user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([userId])
+  @@index([status])
   @@map("campaigns")
 }
 
@@ -193,6 +202,20 @@ enum CampaignStatus {
   FUNDED
   FAILED
   CANCELLED
+}
+
+model CampaignComment {
+  id         String   @id @default(cuid())
+  campaignId String
+  userId     String
+  body       String
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("campaign_comments")
 }
 
 model Reward {
@@ -207,6 +230,7 @@ model Reward {
   campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   backers     Backer[]
 
+  @@index([campaignId])
   @@map("rewards")
 }
 
@@ -226,6 +250,8 @@ model Backer {
 
   createdAt DateTime @default(now())
 
+  @@index([campaignId])
+  @@index([userId])
   @@map("backers")
 }
 
@@ -239,6 +265,7 @@ model CampaignUpdate {
 
   createdAt DateTime @default(now())
 
+  @@index([campaignId])
   @@map("campaign_updates")
 }
 
@@ -396,6 +423,7 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([userId])
   @@map("products")
 }
 
@@ -534,6 +562,8 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([buyerId])
+  @@index([createdAt])
   @@map("orders")
 }
 
@@ -571,6 +601,7 @@ model OrderItem {
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id])
 
+  @@index([productId])
   @@map("order_items")
 }
 
@@ -597,6 +628,7 @@ model Review {
 model Post {
   id        String     @id @default(cuid())
   userId    String
+  groupId   String?    // when set, the post belongs to a group instead of the main feed
   content   String
   images    String[]
   tags      String[]
@@ -604,11 +636,15 @@ model Post {
   comments  Comment[]
   postLikes PostLike[]
 
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([userId])
+  @@index([createdAt])
+  @@index([groupId])
   @@map("posts")
 }
 
@@ -623,6 +659,7 @@ model Comment {
 
   createdAt DateTime @default(now())
 
+  @@index([postId])
   @@map("comments")
 }
 
@@ -649,7 +686,49 @@ model Follow {
   createdAt DateTime @default(now())
 
   @@id([followerId, followingId])
+  @@index([followingId])
   @@map("follows")
+}
+
+enum GroupVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+model Group {
+  id          String          @id @default(cuid())
+  name        String
+  slug        String          @unique
+  description String?
+  image       String?
+  visibility  GroupVisibility @default(PUBLIC)
+  ownerId     String
+
+  owner   User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members GroupMember[]
+  posts   Post[]
+
+  createdAt DateTime @default(now())
+
+  @@index([ownerId])
+  @@index([visibility])
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String   @id @default(cuid())
+  groupId  String
+  userId   String
+  role     String   @default("MEMBER") // OWNER | MEMBER
+  status   String   @default("ACTIVE") // ACTIVE | PENDING (join request for private groups)
+  joinedAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
 }
 
 model PasswordResetToken {
@@ -691,6 +770,7 @@ model Notification {
 
   createdAt DateTime @default(now())
 
+  @@index([userId])
   @@map("notifications")
 }
 
@@ -734,5 +814,7 @@ model Subscription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([creatorId])
+  @@index([subscriberId])
   @@map("subscriptions")
 }

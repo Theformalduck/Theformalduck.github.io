@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { notFound } from "next/navigation";
+import { normalizeFaq, normalizeStretchGoals } from "@/lib/campaign-extras";
 import CampaignPublicClient from "./campaign-public-client";
 
 export default async function PublicCampaignPage(
@@ -30,6 +31,8 @@ export default async function PublicCampaignPage(
 
   const serialized = {
     ...campaign,
+    faq: normalizeFaq(campaign.faq),
+    stretchGoals: normalizeStretchGoals(campaign.stretchGoals),
     deadline: campaign.deadline ? campaign.deadline.toISOString() : null,
     updates: campaign.updates.map(u => ({ ...u, createdAt: u.createdAt.toISOString() })),
   };

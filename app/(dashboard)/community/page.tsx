@@ -5,8 +5,9 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  Heart, MessageSquare, Share2, Users, TrendingUp, Bookmark,
+  MessageSquare, Share2, Users, TrendingUp, Bookmark,
   MoreHorizontal, Image as ImageIcon, Loader2, Send, Trash2, Check, Flag,
+  ThumbsUp, Flame, Clock, Lock, Globe, Plus, X, UsersRound,
 } from "lucide-react";
 import { getInitials, cn } from "@/lib/utils";
 
@@ -18,6 +19,14 @@ function timeAgo(date: string | Date) {
   if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`;
   return `${Math.floor(secs / 86400)}d ago`;
 }
+
+// Compact vote score (1200 → "1.2k"), Reddit-style.
+function voteScore(n: number) {
+  return Math.abs(n) >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, "") + "k" : String(n);
+}
+
+const ACTION_BTN =
+  "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-gray-500 hover:bg-gray-100 transition-colors";
 
 function Avatar({ name, image, size = "md" }: { name?: string | null; image?: string | null; size?: "sm" | "md" }) {
   const cls = size === "sm" ? "w-8 h-8 text-xs" : "w-9 h-9 text-sm";
@@ -32,6 +41,13 @@ function Avatar({ name, image, size = "md" }: { name?: string | null; image?: st
 export default function CommunityPage() {
   const { data: session } = useSession();
   const [feedTab, setFeedTab] = useState<"forYou" | "following">("forYou");
+  const [sort, setSort] = useState<"hot" | "new" | "top">("hot");
+  const [groups, setGroups] = useState<{ myGroups: any[]; discover: any[]; pending: any[] }>({ myGroups: [], discover: [], pending: [] });
+  const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [newGroup, setNewGroup] = useState<{ name: string; description: string; visibility: "PUBLIC" | "PRIVATE" }>({ name: "", description: "", visibility: "PUBLIC" });
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [requested, setRequested] = useState<Set<string>>(new Set());
   const [posts, setPosts] = useState<any[]>([]);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
@@ -57,23 +73,33 @@ export default function CommunityPage() {
 
   const currentUser = session?.user;
 
-  const loadPosts = useCallback((tab: "forYou" | "following" = "forYou") => {
+  // Load the feed: a selected group's posts, the following feed, or the main feed.
+  useEffect(() => {
     setLoadingPosts(true);
-    const url = tab === "following" ? "/api/posts?feed=following" : "/api/posts";
+    const url = selectedGroup
+      ? `/api/posts?group=${selectedGroup.id}`
+      : feedTab === "following"
+      ? "/api/posts?feed=following"
+      : "/api/posts";
     fetch(url)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : { posts: [] }))
       .then((data) => {
         const fetched = data.posts ?? [];
         setPosts(fetched);
         setLikedPosts(new Set(fetched.filter((p: any) => p.likedByMe).map((p: any) => p.id)));
       })
-      .catch((err) => console.error("[loadPosts]", err))
+      .catch(() => setPosts([]))
       .finally(() => setLoadingPosts(false));
+  }, [feedTab, selectedGroup]);
+
+  const loadGroups = useCallback(() => {
+    fetch("/api/groups")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setGroups(data); })
+      .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    loadPosts(feedTab);
-  }, [loadPosts, feedTab]);
+  useEffect(() => { loadGroups(); }, [loadGroups]);
 
   useEffect(() => {
     fetch("/api/follow")
@@ -127,12 +153,12 @@ export default function CommunityPage() {
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: postText, images: postImages }),
+        body: JSON.stringify({ content: postText, images: postImages, groupId: selectedGroup?.id ?? null }),
       });
       if (res.ok) {
         const newPost = await res.json();
-        // Only prepend to feed if on "For You" — following feed only shows others' posts
-        if (feedTab === "forYou") setPosts((prev) => [newPost, ...prev]);
+        // Prepend when the new post belongs to the view we're looking at.
+        if (selectedGroup || feedTab === "forYou") setPosts((prev) => [newPost, ...prev]);
         setPostText("");
         setPostImages([]);
         setMyStats((s) => ({ ...s, posts: s.posts + 1 }));
@@ -140,6 +166,59 @@ export default function CommunityPage() {
     } finally {
       setPosting(false);
     }
+  };
+
+  const createGroup = async () => {
+    if (!newGroup.name.trim()) return;
+    setCreatingGroup(true);
+    try {
+      const res = await fetch("/api/groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newGroup),
+      });
+      if (res.ok) {
+        const g = await res.json();
+        setGroups((prev) => ({ ...prev, myGroups: [g, ...prev.myGroups] }));
+        setShowCreateGroup(false);
+        setNewGroup({ name: "", description: "", visibility: "PUBLIC" });
+        setSelectedGroup(g);
+      }
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  const joinGroup = async (g: any) => {
+    const res = await fetch(`/api/groups/${g.id}/join`, { method: "POST" });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.status === "ACTIVE") {
+      setGroups((prev) => ({
+        ...prev,
+        myGroups: [{ ...g, role: "MEMBER", members: (g.members ?? 0) + 1 }, ...prev.myGroups],
+        discover: prev.discover.filter((d) => d.id !== g.id),
+      }));
+      setSelectedGroup({ ...g, role: "MEMBER" });
+    } else {
+      setRequested((prev) => new Set(prev).add(g.id)); // PENDING request for a private group
+    }
+  };
+
+  const leaveGroup = async (g: any) => {
+    const res = await fetch(`/api/groups/${g.id}/join`, { method: "DELETE" });
+    if (!res.ok) return;
+    setGroups((prev) => ({ ...prev, myGroups: prev.myGroups.filter((m) => m.id !== g.id) }));
+    if (selectedGroup?.id === g.id) setSelectedGroup(null);
+  };
+
+  const approveMember = async (groupId: string, userId: string, action: "approve" | "decline") => {
+    await fetch(`/api/groups/${groupId}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, action }),
+    });
+    setGroups((prev) => ({ ...prev, pending: prev.pending.filter((p) => !(p.groupId === groupId && p.user.id === userId)) }));
   };
 
   const handleLike = async (postId: string) => {
@@ -268,6 +347,18 @@ export default function CommunityPage() {
     setOpenMenu(null);
   };
 
+  // Apply the active sort (Following feed is fetched server-side and stays newest-first).
+  const sortedPosts = (() => {
+    if (feedTab === "following" || sort === "new") return posts;
+    const hot = (p: any) =>
+      (p.likes ?? 0) / Math.pow((Date.now() - new Date(p.createdAt).getTime()) / 3_600_000 + 2, 1.5);
+    const list = [...posts];
+    list.sort(sort === "top"
+      ? (a, b) => (b.likes ?? 0) - (a.likes ?? 0)
+      : (a, b) => hot(b) - hot(a));
+    return list;
+  })();
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       {reportMsg && (
@@ -285,6 +376,29 @@ export default function CommunityPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main feed */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Group context header */}
+          {selectedGroup && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-3">
+              <button onClick={() => setSelectedGroup(null)} className="text-gray-400 hover:text-gray-700 text-sm font-medium flex-shrink-0">← Community</button>
+              <div className="w-px h-5 bg-gray-200" />
+              <div className="w-9 h-9 rounded-xl bg-nexus-500/15 flex items-center justify-center flex-shrink-0">
+                <UsersRound className="w-4.5 h-4.5 text-nexus-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h2 className="font-bold text-gray-900 truncate">{selectedGroup.name}</h2>
+                  {selectedGroup.visibility === "PRIVATE"
+                    ? <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                    : <Globe className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />}
+                </div>
+                <p className="text-gray-400 text-xs">{selectedGroup.members ?? 0} members · {selectedGroup.visibility === "PRIVATE" ? "Private group" : "Public group"}</p>
+              </div>
+              {selectedGroup.role !== "OWNER" && (
+                <button onClick={() => leaveGroup(selectedGroup)} className="text-xs font-semibold text-gray-500 hover:text-red-500 px-3 py-1.5 rounded-lg hover:bg-gray-50 flex-shrink-0">Leave</button>
+              )}
+            </div>
+          )}
+
           {/* Create post */}
           <div className="bg-white border border-gray-200 rounded-2xl p-4">
             <div className="flex items-start gap-3">
@@ -293,7 +407,7 @@ export default function CommunityPage() {
                 <textarea
                   value={postText}
                   onChange={(e) => setPostText(e.target.value)}
-                  placeholder="Share something with your community..."
+                  placeholder={selectedGroup ? `Share something in ${selectedGroup.name}…` : "Share something with your community..."}
                   rows={3}
                   className="w-full bg-transparent text-gray-700 text-sm placeholder:text-gray-400 resize-none focus:outline-none leading-relaxed"
                   onKeyDown={(e) => {
@@ -336,23 +450,38 @@ export default function CommunityPage() {
             </div>
           </div>
 
-          {/* Feed tabs */}
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-2xl">
-            {(["forYou", "following"] as const).map((tab) => (
+          {/* Sort bar (hidden inside a group feed) */}
+          {!selectedGroup && (
+          <div className="bg-white border border-gray-200 rounded-xl px-2 py-1.5 flex items-center gap-1">
+            {([
+              { id: "hot", label: "Hot", icon: Flame },
+              { id: "new", label: "New", icon: Clock },
+              { id: "top", label: "Top", icon: TrendingUp },
+            ] as const).map(({ id, label, icon: Icon }) => (
               <button
-                key={tab}
-                onClick={() => setFeedTab(tab)}
+                key={id}
+                onClick={() => { setSort(id); if (feedTab === "following") setFeedTab("forYou"); }}
                 className={cn(
-                  "flex-1 py-2 text-sm font-medium rounded-xl transition-all",
-                  feedTab === tab
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors",
+                  sort === id && feedTab === "forYou" ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-100"
                 )}
               >
-                {tab === "forYou" ? "For You" : "Following"}
+                <Icon className="w-4 h-4" />
+                {label}
               </button>
             ))}
+            <button
+              onClick={() => setFeedTab(feedTab === "following" ? "forYou" : "following")}
+              className={cn(
+                "ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors",
+                feedTab === "following" ? "bg-nexus-600 text-white" : "text-gray-500 hover:bg-gray-100"
+              )}
+            >
+              <Users className="w-4 h-4" />
+              Following
+            </button>
           </div>
+          )}
 
           {/* Posts */}
           {loadingPosts ? (
@@ -375,7 +504,7 @@ export default function CommunityPage() {
               )}
             </div>
           ) : (
-            posts.map((post) => {
+            sortedPosts.map((post) => {
               const liked = likedPosts.has(post.id);
               const bookmarked = bookmarks.has(post.id);
               const copied = copiedPost === post.id;
@@ -384,37 +513,32 @@ export default function CommunityPage() {
               const commentsOpen = openComments.has(post.id);
               const postComments = comments[post.id] ?? [];
               const authorName = post.user?.name ?? "Unknown";
-              const authorRole = post.user?.role ?? "";
               return (
-                <div key={post.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden hover:border-gray-300 transition-all">
-                  <div className="p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <Link href={post.user?.username ? `/u/${post.user.username}` : "#"} className="flex items-center gap-3 group/author">
-                        <Avatar name={authorName} image={post.user?.image} />
-                        <div>
-                          <div className="text-gray-900 font-semibold text-sm group-hover/author:underline">{authorName}</div>
-                          <div className="text-gray-400 text-xs">{authorRole.toLowerCase()} · {timeAgo(post.createdAt)}</div>
-                        </div>
-                      </Link>
-                      <div className="flex items-center gap-2">
+                <div key={post.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-all">
+                  <div className="min-w-0">
+                    <div className="p-3 sm:p-4">
+                      {/* Meta row */}
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2">
+                        <Avatar name={authorName} image={post.user?.image} size="sm" />
+                        <Link href={post.user?.username ? `/u/${post.user.username}` : "#"} className="font-semibold text-gray-600 hover:underline">
+                          {post.user?.username ? `u/${post.user.username}` : authorName}
+                        </Link>
+                        <span className="text-gray-300">·</span>
+                        <span>{timeAgo(post.createdAt)}</span>
                         {!isOwn && (
                           <button
                             onClick={() => handleFollow(post.user.id)}
                             disabled={followLoading.has(post.user.id)}
-                            className={cn(
-                              "text-xs px-3 py-1 rounded-full border transition-all",
-                              followingUsers.has(post.user.id)
-                                ? "border-gray-200 text-gray-500 bg-gray-50"
-                                : "border-nexus-200 text-nexus-600 hover:bg-nexus-50"
-                            )}
+                            className={cn("ml-1 font-semibold transition-colors",
+                              followingUsers.has(post.user.id) ? "text-gray-400" : "text-nexus-600 hover:text-nexus-700")}
                           >
-                            {followingUsers.has(post.user.id) ? "Following" : "Follow"}
+                            {followingUsers.has(post.user.id) ? "Following" : "+ Follow"}
                           </button>
                         )}
-                        <div className="relative">
+                        <div className="ml-auto relative">
                           <button
                             onClick={(e) => { e.stopPropagation(); setOpenMenu(menuOpen ? null : post.id); }}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
+                            className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
                           >
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
@@ -457,73 +581,47 @@ export default function CommunityPage() {
                           )}
                         </div>
                       </div>
+
+                      {/* Body */}
+                      <p className="text-gray-800 text-[15px] leading-relaxed whitespace-pre-line">{post.content}</p>
+
+                      {post.images?.length > 0 && (
+                        <div className="rounded-lg overflow-hidden mt-2.5 border border-gray-100">
+                          <img src={post.images[0]} alt="" className="w-full object-cover max-h-96" />
+                        </div>
+                      )}
+
+                      {post.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {post.tags.map((tag: string) => (
+                            <span key={tag} className="text-xs px-2.5 py-0.5 rounded-full bg-nexus-50 text-nexus-600 border border-nexus-500/15">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Action bar */}
+                      <div className="flex items-center gap-0.5 mt-2.5 -ml-1">
+                        <button onClick={() => handleLike(post.id)} className={cn(ACTION_BTN, liked && "text-nexus-600 bg-nexus-50")}>
+                          <ThumbsUp className={cn("w-4 h-4", liked && "fill-current")} /> {voteScore(post.likes ?? 0)}
+                        </button>
+                        <button onClick={() => handleToggleComments(post.id)} className={cn(ACTION_BTN, commentsOpen && "bg-gray-100 text-gray-700")}>
+                          <MessageSquare className="w-4 h-4" /> {post._count?.comments ?? 0} Comments
+                        </button>
+                        <button onClick={() => handleShare(post.id)} className={ACTION_BTN}>
+                          {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />} {copied ? "Copied" : "Share"}
+                        </button>
+                        <button onClick={() => handleBookmark(post.id)} className={cn(ACTION_BTN, bookmarked && "text-nexus-600")}>
+                          <Bookmark className={cn("w-4 h-4", bookmarked && "fill-current")} /> Save
+                        </button>
+                      </div>
                     </div>
 
-                    <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line mb-3">{post.content}</p>
-
-                    {post.images?.length > 0 && (
-                      <div className="rounded-xl overflow-hidden mb-3">
-                        <img src={post.images[0]} alt="" className="w-full object-cover max-h-64" />
-                      </div>
-                    )}
-
-                    {post.tags?.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {post.tags.map((tag: string) => (
-                          <span key={tag} className="text-xs px-2.5 py-0.5 rounded-full bg-nexus-50 text-nexus-600 border border-nexus-500/15">
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-1 pt-3 border-t border-gray-200">
-                      <button
-                        onClick={() => handleLike(post.id)}
-                        className={cn(
-                          "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm transition-all",
-                          liked ? "text-nexus-600 bg-nexus-50" : "text-gray-400 hover:text-gray-700 hover:bg-gray-50"
-                        )}
-                      >
-                        <Heart className={cn("w-4 h-4", liked && "fill-current")} />
-                        {post.likes}
-                      </button>
-                      <button
-                        onClick={() => handleToggleComments(post.id)}
-                        className={cn(
-                          "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm transition-all",
-                          commentsOpen ? "text-nexus-600 bg-nexus-50" : "text-gray-400 hover:text-gray-700 hover:bg-gray-50"
-                        )}
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        {post._count?.comments ?? 0}
-                      </button>
-                      <button
-                        onClick={() => handleShare(post.id)}
-                        className={cn(
-                          "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm transition-all",
-                          copied ? "text-emerald-600 bg-emerald-50" : "text-gray-400 hover:text-gray-700 hover:bg-gray-50"
-                        )}
-                      >
-                        {copied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
-                        {copied ? "Copied!" : "Share"}
-                      </button>
-                      <button
-                        onClick={() => handleBookmark(post.id)}
-                        className={cn(
-                          "ml-auto w-8 h-8 rounded-xl flex items-center justify-center transition-all",
-                          bookmarked ? "text-nexus-600 bg-nexus-50" : "text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                        )}
-                      >
-                        <Bookmark className={cn("w-4 h-4", bookmarked && "fill-current")} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Comments panel */}
-                  {commentsOpen && (
-                    <div className="border-t border-gray-100 bg-gray-50/50">
-                      <div className="px-5 py-3 space-y-3">
+                    {/* Comments panel */}
+                    {commentsOpen && (
+                      <div className="border-t border-gray-100 bg-gray-50/50">
+                        <div className="px-4 py-3 space-y-3">
                         {postComments.length === 0 ? (
                           <p className="text-gray-400 text-xs text-center py-2">No comments yet. Be the first!</p>
                         ) : (
@@ -567,6 +665,7 @@ export default function CommunityPage() {
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
               );
             })
@@ -575,6 +674,87 @@ export default function CommunityPage() {
 
         {/* Right sidebar */}
         <div className="space-y-4">
+          {/* Groups */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-gray-900 font-semibold text-sm">Groups</h3>
+              <button onClick={() => setShowCreateGroup(true)} className="inline-flex items-center gap-1 text-xs font-semibold text-nexus-600 hover:text-nexus-700">
+                <Plus className="w-3.5 h-3.5" /> Create
+              </button>
+            </div>
+
+            {groups.myGroups.length > 0 && (
+              <div className="space-y-1 mb-3">
+                {groups.myGroups.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => setSelectedGroup(g)}
+                    className={cn("w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left transition-colors",
+                      selectedGroup?.id === g.id ? "bg-nexus-50" : "hover:bg-gray-50")}
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-nexus-500/15 flex items-center justify-center flex-shrink-0">
+                      {g.visibility === "PRIVATE" ? <Lock className="w-3.5 h-3.5 text-nexus-600" /> : <UsersRound className="w-3.5 h-3.5 text-nexus-600" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-gray-800 truncate">{g.name}</div>
+                      <div className="text-[11px] text-gray-400">{g.members ?? 0} members</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {groups.discover.length > 0 && (
+              <>
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Discover</p>
+                <div className="space-y-2">
+                  {groups.discover.slice(0, 6).map((g) => (
+                    <div key={g.id} className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Globe className="w-3.5 h-3.5 text-gray-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium text-gray-800 truncate">{g.name}</div>
+                        <div className="text-[11px] text-gray-400">{g.members ?? 0} members</div>
+                      </div>
+                      <button
+                        onClick={() => joinGroup(g)}
+                        disabled={requested.has(g.id)}
+                        className="text-xs font-semibold px-2.5 py-1 rounded-full border border-nexus-200 text-nexus-600 hover:bg-nexus-50 disabled:opacity-50 flex-shrink-0"
+                      >
+                        {requested.has(g.id) ? "Requested" : "Join"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {groups.myGroups.length === 0 && groups.discover.length === 0 && (
+              <p className="text-gray-400 text-xs">No groups yet — create the first one!</p>
+            )}
+          </div>
+
+          {/* Pending join requests (for group owners) */}
+          {groups.pending.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-4">
+              <h3 className="text-gray-900 font-semibold text-sm mb-3">Join requests</h3>
+              <div className="space-y-2.5">
+                {groups.pending.map((p) => (
+                  <div key={p.id} className="flex items-center gap-2.5">
+                    <Avatar name={p.user.name} image={p.user.image} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-gray-800 truncate">{p.user.name ?? p.user.username}</div>
+                      <div className="text-[11px] text-gray-400 truncate">wants to join {p.groupName}</div>
+                    </div>
+                    <button onClick={() => approveMember(p.groupId, p.user.id, "approve")} className="text-xs font-semibold text-emerald-600 hover:bg-emerald-50 px-2 py-1 rounded-lg">Approve</button>
+                    <button onClick={() => approveMember(p.groupId, p.user.id, "decline")} className="text-gray-400 hover:text-red-500" title="Decline"><X className="w-4 h-4" /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* My stats */}
           <div className="bg-white border border-gray-200 rounded-2xl p-4">
             <h3 className="text-gray-900 font-semibold text-sm mb-3">Your Community</h3>
@@ -630,6 +810,58 @@ export default function CommunityPage() {
           )}
         </div>
       </div>
+
+      {/* Create group modal */}
+      {showCreateGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !creatingGroup && setShowCreateGroup(false)}>
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-md p-5 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 text-lg">Create a group</h3>
+              <button onClick={() => setShowCreateGroup(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+            </div>
+
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Group name</label>
+            <input
+              value={newGroup.name}
+              onChange={(e) => setNewGroup({ ...newGroup, name: e.target.value })}
+              placeholder="e.g. Indie Game Devs"
+              className="w-full h-10 px-3 rounded-xl bg-gray-50 border border-gray-200 text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-nexus-500"
+            />
+
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+            <textarea
+              value={newGroup.description}
+              onChange={(e) => setNewGroup({ ...newGroup, description: e.target.value })}
+              rows={2}
+              placeholder="What's this group about?"
+              className="w-full px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-sm mb-3 resize-none focus:outline-none focus:ring-2 focus:ring-nexus-500"
+            />
+
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Visibility</label>
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              {([
+                { v: "PUBLIC", icon: Globe, label: "Public", desc: "Anyone can see and join" },
+                { v: "PRIVATE", icon: Lock, label: "Private", desc: "Approval required to join" },
+              ] as const).map(({ v, icon: Icon, label, desc }) => (
+                <button
+                  key={v}
+                  onClick={() => setNewGroup({ ...newGroup, visibility: v })}
+                  className={cn("text-left p-3 rounded-xl border transition-all",
+                    newGroup.visibility === v ? "border-nexus-400 bg-nexus-50 ring-1 ring-nexus-400" : "border-gray-200 hover:border-gray-300")}
+                >
+                  <Icon className="w-4 h-4 text-gray-600 mb-1" />
+                  <div className="text-sm font-semibold text-gray-800">{label}</div>
+                  <div className="text-[11px] text-gray-400 leading-tight">{desc}</div>
+                </button>
+              ))}
+            </div>
+
+            <Button variant="lime" className="w-full justify-center" disabled={!newGroup.name.trim() || creatingGroup} onClick={createGroup}>
+              {creatingGroup ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create group
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

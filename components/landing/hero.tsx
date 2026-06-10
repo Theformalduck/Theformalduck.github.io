@@ -31,23 +31,6 @@ export function Hero() {
       {/* ── Text + CTAs ───────────────────────────────────── */}
       <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center pt-7">
 
-        {/* Eyebrow — names the category + audience in the first glance */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 mb-6 px-3.5 py-1.5 rounded-full text-[12px] font-semibold"
-          style={{
-            color: "rgba(255,255,255,0.92)",
-            border: "1px solid rgba(255,255,255,0.22)",
-            background: "rgba(255,255,255,0.10)",
-            backdropFilter: "blur(8px)",
-          }}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          The all-in-one platform for creators
-        </motion.div>
-
         {/* Heading */}
         <motion.h1
           initial={{ opacity: 0, y: 24 }}
