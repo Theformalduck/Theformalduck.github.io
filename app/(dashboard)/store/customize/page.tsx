@@ -317,6 +317,7 @@ export default function StoreCustomizePage() {
   const [realProducts, setRealProducts] = useState<PreviewProduct[]>([]);
   const [heroSnapEnabled, setHeroSnapEnabled] = useState(true);
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [focusMode, setFocusMode] = useState(false); // hides section tabs + settings panel so the preview is the hero
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -1952,7 +1953,7 @@ export default function StoreCustomizePage() {
       <div className="flex flex-1 min-h-0">
         <div className="flex-1 min-w-0 flex flex-col">
           <div className="flex items-center gap-2 px-4 py-2.5 bg-white border-b border-gray-100 flex-shrink-0">
-            {TOOLBAR.map((btn) => (
+            {!focusMode && TOOLBAR.map((btn) => (
               <button
                 key={btn.id}
                 onClick={() => openSection(btn.id)}
@@ -1967,7 +1968,16 @@ export default function StoreCustomizePage() {
               </button>
             ))}
             <div className="flex-1" />
-            <span className="text-xs text-gray-400 hidden xl:block mr-2">Click any section in the preview to edit</span>
+            {!focusMode && <span className="text-xs text-gray-400 hidden xl:block mr-2">Click any section in the preview to edit</span>}
+            <button
+              onClick={() => setFocusMode((v) => !v)}
+              title="Focus mode — hide panels and preview your store full-width"
+              className={`flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-xs font-semibold transition-all mr-1 ${
+                focusMode ? "bg-[#c8e83c] text-gray-900" : "bg-gray-50 text-gray-500 border border-gray-200 hover:text-gray-700"
+              }`}
+            >
+              {focusMode ? "Exit Focus" : "Focus"}
+            </button>
             <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
               <button
                 onClick={() => setPreviewDevice("desktop")}
@@ -2048,7 +2058,7 @@ export default function StoreCustomizePage() {
           </div>
         </div>
 
-        {activeSection && (
+        {activeSection && !focusMode && (
           <div className="w-[360px] flex-shrink-0 flex flex-col bg-white border-l border-gray-100">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
               <h2 className="font-semibold text-gray-900 text-sm">{PANEL_TITLES[activeSection]}</h2>

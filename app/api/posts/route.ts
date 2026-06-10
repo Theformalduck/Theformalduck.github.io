@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sanitizeField, sanitizeArray } from "@/lib/sanitize";
 import { rateLimit } from "@/lib/rate-limit";
+import { captureError } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -66,7 +67,7 @@ export async function GET(req: NextRequest) {
     const nextCursor = posts.length === take ? posts[posts.length - 1].id : null;
     return NextResponse.json({ posts: postsWithMeta, nextCursor });
   } catch (err) {
-    console.error("[posts GET]", err);
+    captureError(err, { route: "/api/posts", method: "GET" });
     return NextResponse.json({ error: "Failed to load posts" }, { status: 500 });
   }
 }
@@ -121,7 +122,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ...post, likedByMe: false }, { status: 201 });
   } catch (err) {
-    console.error("[posts POST]", err);
+    captureError(err, { route: "/api/posts", method: "POST" });
     return NextResponse.json({ error: "Failed to create post" }, { status: 500 });
   }
 }

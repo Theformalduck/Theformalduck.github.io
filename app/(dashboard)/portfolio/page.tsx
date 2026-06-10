@@ -3547,6 +3547,8 @@ export default function PortfolioEditor() {
   const [ctxMenu, setCtxMenu] = useState<{x:number;y:number;elemId:string|null}|null>(null);
   const [snapEnabled, setSnapEnabled] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // Focus mode hides both side panels so the page being edited becomes the hero.
+  const [focusMode, setFocusMode] = useState(false);
   const marqueeCoverRef = useRef<HTMLDivElement>(null);
   const editSnapRef    = useRef<CanvasDoc|null>(null);
   const clipboardRef   = useRef<Elem[]>([]);
@@ -4263,6 +4265,7 @@ export default function PortfolioEditor() {
       />
 
       <div className="flex flex-1 overflow-hidden">
+        {!focusMode && (
         <LeftPanel
           onAddElem={addElem}
           onApplyTemplate={newDoc=>{
@@ -4275,6 +4278,7 @@ export default function PortfolioEditor() {
           communityRefreshKey={communityRefreshKey}
           currentUsername={(session?.user as any)?.username}
         />
+        )}
 
         {/* Canvas */}
         <div
@@ -4312,6 +4316,14 @@ export default function PortfolioEditor() {
                   borderRadius:999,border:"none",background:"transparent",cursor:"pointer",
                   color:"#9ca3af",fontSize:11,fontWeight:600}}>
                 Reset
+              </button>
+              <div style={{width:1,height:16,background:"rgba(255,255,255,0.15)",margin:"0 2px"}} />
+              <button onClick={()=>setFocusMode(v=>!v)} title="Focus mode — hide panels so the page is the only thing on screen"
+                style={{height:26,padding:"0 8px",display:"flex",alignItems:"center",justifyContent:"center",gap:5,
+                  borderRadius:999,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,
+                  background: focusMode ? "#c8e83c" : "transparent",
+                  color: focusMode ? "#162000" : "#9ca3af"}}>
+                {focusMode ? "Exit Focus" : "Focus"}
               </button>
             </div>
           </div>
@@ -4578,6 +4590,7 @@ export default function PortfolioEditor() {
           <div style={{height:(activePg?.h??DEFAULT_H)*zoom+48}} />
         </div>
 
+        {!focusMode && (
         <RightPanel
           el={selectedEl}
           page={activePg??null}
@@ -4618,6 +4631,7 @@ export default function PortfolioEditor() {
           onSelectLayer={(id)=>{ setSelectedIds([id]); selectedIdsRef.current=[id]; }}
           onUploadBg={()=>{}}
         />
+        )}
       </div>
     </div>
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sanitizeField, sanitizeUrl } from "@/lib/sanitize";
+import { captureError } from "@/lib/logger";
 
 // List the groups the user belongs to, public groups to discover, and any
 // pending join requests on groups the user owns.
@@ -10,6 +11,7 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const userId = session.user.id;
 
+  try {
   const [memberships, publicGroups, pending] = await Promise.all([
     db.groupMember.findMany({
       where: { userId, status: "ACTIVE" },
@@ -46,6 +48,10 @@ export async function GET() {
       })),
     pending: pending.map((p) => ({ id: p.id, groupId: p.groupId, groupName: p.group.name, user: p.user })),
   });
+  } catch (err) {
+    captureError(err, { route: "/api/groups", userId });
+    return NextResponse.json({ error: "Failed to load groups" }, { status: 500 });
+  }
 }
 
 // Create a group. The creator becomes the OWNER and an active member.
