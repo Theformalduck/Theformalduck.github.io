@@ -4,7 +4,7 @@ import { Mail, LifeBuoy, Briefcase, Shield } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Get in touch with the Sellora team — support, partnerships, press, and legal.",
+  description: "Get in touch with the Sellora team, support, partnerships, press, and legal.",
 };
 
 const channels = [

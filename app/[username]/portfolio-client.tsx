@@ -1,9 +1,10 @@
-﻿"use client";
+"use client";
 
 import { motion, AnimatePresence } from "framer-motion";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Progress } from "@/components/ui/progress";
+import { SelloraBadge } from "@/components/sellora-badge";
 import { formatCurrency } from "@/lib/utils";
 import {
   Heart, Share2, MessageSquare, CheckCircle, Star, EyeOff,
@@ -815,7 +816,7 @@ export default function PortfolioClient({
                       &ldquo;{t.text}&rdquo;
                     </p>
                     <div className="text-sm font-semibold" style={{ color: theme.text }}>
-                      — {t.author}{t.role ? `, ${t.role}` : ""}
+                      – {t.author}{t.role ? `, ${t.role}` : ""}
                     </div>
                   </motion.div>
                 ))}
@@ -981,7 +982,7 @@ export default function PortfolioClient({
           <div className="flex items-center gap-2">
             <EyeOff className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
             <span className="text-amber-800 text-xs font-medium">
-              Draft preview — this page is not visible to others yet.
+              Draft preview, this page is not visible to others yet.
             </span>
           </div>
           <Link href="/portfolio" className="text-xs font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-900 whitespace-nowrap">
@@ -1241,7 +1242,7 @@ export default function PortfolioClient({
       <div className={`${pageWidthClass} mx-auto px-4 sm:px-6 pb-20`}>
         <div className="mt-8">
 
-          {/* Sidebar floats right — sections wrap around it and expand below once it ends */}
+          {/* Sidebar floats right, sections wrap around it and expand below once it ends */}
           {hasSidebar && (
             <div className="md:float-right md:ml-10 md:w-[300px] space-y-5 mb-8">
 
@@ -1302,7 +1303,7 @@ export default function PortfolioClient({
             </div>
           )}
 
-          {/* Main sections — flow around the sidebar; expand full-width once sidebar ends */}
+          {/* Main sections, flow around the sidebar; expand full-width once sidebar ends */}
           <div className={spacingClass}>
             {visible
               .filter(s => MAIN_SECTION_TYPES.has(s.type))
@@ -1316,26 +1317,8 @@ export default function PortfolioClient({
         </div>
       </div>
 
-      {/* Footer badge */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true }}
-        className="pb-10 flex justify-center"
-      >
-        <Link
-          href="/"
-          className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all hover:opacity-80"
-          style={{
-            background: theme.dark ? "rgba(255,255,255,0.07)" : "#f3f4f6",
-            color: theme.muted,
-            border: `1px solid ${theme.border}`,
-          }}
-        >
-          <Globe className="w-3 h-3" />
-          Built with Sellora
-        </Link>
-      </motion.div>
+      {/* Sellora badge (floating, always on screen) */}
+      <SelloraBadge />
 
       {/* Gallery lightbox */}
       <AnimatePresence>

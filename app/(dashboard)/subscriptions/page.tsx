@@ -129,8 +129,8 @@ export default function SubscriptionsPage() {
               </Link>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
+              <table className="w-full text-sm min-w-[480px]">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Subscriber</th>
@@ -151,7 +151,7 @@ export default function SubscriptionsPage() {
                               </div>
                           }
                           <div>
-                            <p className="font-medium text-gray-900">{s.subscriber.name ?? "—"}</p>
+                            <p className="font-medium text-gray-900">{s.subscriber.name ?? "–"}</p>
                             <p className="text-xs text-gray-400">{s.subscriber.email}</p>
                           </div>
                         </div>

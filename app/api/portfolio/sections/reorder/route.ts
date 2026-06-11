@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-// POST { ids: string[] } — ordered array of section IDs
+// POST { ids: string[] }, ordered array of section IDs
 // Updates each section's order = its index in the array.
 export async function POST(req: NextRequest) {
   const session = await auth();

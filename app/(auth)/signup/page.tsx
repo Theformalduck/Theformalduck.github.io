@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -42,7 +42,11 @@ export default function SignupPage() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Registration failed. Please try again.");
+      if (res.status === 409) {
+        setError("An account with that email already exists. Try logging in instead — if you signed up with Google, log in with Google and add a password under Settings → Security.");
+      } else {
+        setError(data.error ?? "Registration failed. Please try again.");
+      }
       setLoading(false);
       return;
     }
@@ -133,7 +137,7 @@ export default function SignupPage() {
               </div>
 
               <form onSubmit={handleStep1} className="space-y-4">
-                {/* Honeypot — hidden from humans, catches bots that fill every field */}
+                {/* Honeypot, hidden from humans, catches bots that fill every field */}
                 <input
                   type="text" tabIndex={-1} autoComplete="off" aria-hidden="true"
                   value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })}

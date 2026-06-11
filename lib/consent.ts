@@ -8,7 +8,7 @@
 export type ConsentCategory = "necessary" | "analytics" | "marketing";
 
 export interface ConsentState {
-  necessary: true; // always granted — required for the Service to function
+  necessary: true; // always granted, required for the Service to function
   analytics: boolean; // e.g. Google Analytics
   marketing: boolean; // e.g. Meta Pixel, ad/retargeting, arbitrary embeds
   /** ISO timestamp of the decision, so we can show "last updated". */
@@ -17,7 +17,7 @@ export interface ConsentState {
   version: number;
 }
 
-// Bump when the set of cookies/categories changes materially — visitors who
+// Bump when the set of cookies/categories changes materially, visitors who
 // consented under an older version will be re-prompted.
 export const CONSENT_VERSION = 1;
 

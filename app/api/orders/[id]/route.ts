@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
         });
         sendEmailAfter({
           to: customerEmail,
-          subject: `Order #${order.id.slice(-8).toUpperCase()} — ${status.charAt(0) + status.slice(1).toLowerCase()}`,
+          subject: `Order #${order.id.slice(-8).toUpperCase()} – ${status.charAt(0) + status.slice(1).toLowerCase()}`,
           html: orderStatusEmail({
             id: order.id,
             status: status as "SHIPPED" | "DELIVERED" | "PROCESSING" | "CANCELLED",

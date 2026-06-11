@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
@@ -19,7 +19,7 @@ export async function generateMetadata(props: PageProps<"/[username]">): Promise
     },
   });
   if (!user) return {};
-  const title = user.portfolio?.seoTitle ?? `${user.name ?? username} — Creator Profile`;
+  const title = user.portfolio?.seoTitle ?? `${user.name ?? username} – Creator Profile`;
   const description = user.portfolio?.seoDesc ?? user.bio ?? `Check out ${user.name ?? username}'s creator profile.`;
   const appUrl = process.env.NEXTAUTH_URL ?? "";
   return {
@@ -51,7 +51,7 @@ export default async function CreatorProfilePage(
         include: {
           sections: { orderBy: { order: "asc" } },
         },
-        // canvasData is a scalar field — included automatically
+        // canvasData is a scalar field, included automatically
       },
       campaigns: {
         where: { status: "ACTIVE" },

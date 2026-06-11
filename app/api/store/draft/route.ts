@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// Publish the draft — copy it into the live columns and clear the draft.
+// Publish the draft, copy it into the live columns and clear the draft.
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -53,7 +53,7 @@ export async function POST() {
   }
 }
 
-// Discard the draft — revert the editor to the live (published) settings.
+// Discard the draft, revert the editor to the live (published) settings.
 export async function DELETE() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

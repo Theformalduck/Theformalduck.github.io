@@ -190,7 +190,7 @@ export const LAYOUTS: Record<string, { name: string; cols: string }> = {
 };
 
 export const HERO_STYLES: Record<string, { name: string; desc: string }> = {
-  storefront: { name: "Storefront",   desc: "Bold centered hero — Shopify Dawn style" },
+  storefront: { name: "Storefront",   desc: "Bold centered hero – Shopify Dawn style" },
   showcase:   { name: "Showcase",     desc: "Headline & CTA left · image card right" },
   marquee:    { name: "Marquee",      desc: "Full-bleed image with big scrolling text" },
   editorial:  { name: "Editorial",    desc: "Large headline above a wide image" },
@@ -352,7 +352,7 @@ export interface StoreSettings {
   imageBannerLayout: "left" | "right";
   iconRowEnabled: boolean;
   iconRowItems: { id: string; icon: string; title: string; text: string }[];
-  // Drag-and-drop section builder (ordered blocks) — per page.
+  // Drag-and-drop section builder (ordered blocks), per page.
   homeSections: import("@/lib/store-sections").StoreSection[];
   collectionSections: import("@/lib/store-sections").StoreSection[];
   productSections: import("@/lib/store-sections").StoreSection[];
@@ -442,7 +442,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   showCurrencySwitcher: false,
 };
 
-// h is a CSS height value applied via inline style — avoids Tailwind purging dynamic class strings
+// h is a CSS height value applied via inline style, avoids Tailwind purging dynamic class strings
 // pb is the bottom padding (px) for the hero content div so content fits within the fixed height
 export const HERO_SIZES: Record<string, { name: string; h: string; pb: number; previewH: number }> = {
   fullscreen: { name: "Full Screen", h: "100vh", pb: 80, previewH: 160 },
@@ -458,7 +458,7 @@ export const HERO_TEXT_ALIGNS: Record<string, { name: string; cls: string }> = {
   right:  { name: "Right",  cls: "items-end text-right"    },
 };
 
-// Visual style presets — only override non-personal settings (keep name/bio/images/socials/policies)
+// Visual style presets, only override non-personal settings (keep name/bio/images/socials/policies)
 export type StoreTemplate = {
   id: string;
   name: string;
@@ -472,13 +472,13 @@ export type StoreTemplate = {
   >>;
 };
 
-// Starter templates — each is a full storefront look built on one of the themes.
+// Starter templates, each is a full storefront look built on one of the themes.
 // Applying a template sets palette, font, button, hero layout and grid together.
 export const STORE_TEMPLATES: StoreTemplate[] = [
   {
     id: "reflect",
     name: "Reflect",
-    desc: "Oversized typographic hero — bold and graphic",
+    desc: "Oversized typographic hero, bold and graphic",
     tags: ["Bold", "Typographic", "Modern"],
     accent: "#111113",
     settings: {
@@ -502,7 +502,7 @@ export const STORE_TEMPLATES: StoreTemplate[] = [
   {
     id: "atelier",
     name: "Atelier",
-    desc: "Refined serif fine-art look — headline above a wide image",
+    desc: "Refined serif fine-art look, headline above a wide image",
     tags: ["Editorial", "Serif", "Fine Art"],
     accent: "#1f9d63",
     settings: {
@@ -526,7 +526,7 @@ export const STORE_TEMPLATES: StoreTemplate[] = [
   {
     id: "studio",
     name: "Studio",
-    desc: "Soft terracotta on cream — split hero, serif headline",
+    desc: "Soft terracotta on cream, split hero, serif headline",
     tags: ["Sophisticated", "Calm", "Serif"],
     accent: "#c98064",
     settings: {
@@ -550,7 +550,7 @@ export const STORE_TEMPLATES: StoreTemplate[] = [
   {
     id: "meadow",
     name: "Meadow",
-    desc: "Earthy tan & forest green — showcase hero, slab type",
+    desc: "Earthy tan & forest green, showcase hero, slab type",
     tags: ["Friendly", "Nature", "Organic"],
     accent: "#1f3326",
     settings: {
@@ -574,7 +574,7 @@ export const STORE_TEMPLATES: StoreTemplate[] = [
   {
     id: "sunny",
     name: "Sunny Day",
-    desc: "Cheerful gold with rounded type — centered hero",
+    desc: "Cheerful gold with rounded type, centered hero",
     tags: ["Playful", "Bright", "Friendly"],
     accent: "#16161a",
     settings: {
@@ -586,7 +586,7 @@ export const STORE_TEMPLATES: StoreTemplate[] = [
   {
     id: "tangerine",
     name: "Tangerine",
-    desc: "High-impact orange — bold product hero, heavy type",
+    desc: "High-impact orange, bold product hero, heavy type",
     tags: ["Bold", "Energetic", "Orange"],
     accent: "#f15a24",
     settings: {
@@ -598,7 +598,7 @@ export const STORE_TEMPLATES: StoreTemplate[] = [
   {
     id: "voltage",
     name: "Voltage",
-    desc: "Crisp grey with electric blue — marquee hero",
+    desc: "Crisp grey with electric blue, marquee hero",
     tags: ["Bold", "Tech", "Blue"],
     accent: "#2f53d8",
     settings: {
@@ -610,7 +610,7 @@ export const STORE_TEMPLATES: StoreTemplate[] = [
   {
     id: "citrus",
     name: "Citrus",
-    desc: "Punchy lime & deep green — quirky editorial hero",
+    desc: "Punchy lime & deep green, quirky editorial hero",
     tags: ["Quirky", "Fresh", "Green"],
     accent: "#1d3a2a",
     settings: {

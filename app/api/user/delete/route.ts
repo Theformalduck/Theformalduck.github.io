@@ -7,11 +7,11 @@ import { db } from "@/lib/db";
 //
 // Most relations cascade from User, but a few use Restrict and would block the
 // delete, so we clear them first in a transaction:
-//   • Backer        — pledges the user made, and pledges others made to the
+//   • Backer       , pledges the user made, and pledges others made to the
 //                     user's campaigns
-//   • Subscription  — where the user is the subscriber, the creator, or owns
+//   • Subscription , where the user is the subscriber, the creator, or owns
 //                     the product
-//   • OrderItem     — line items for the user's products (lets the products
+//   • OrderItem    , line items for the user's products (lets the products
 //                     cascade-delete; the parent orders are kept for the buyer)
 // Orders the user *placed* keep their record with buyerId set to null.
 export async function DELETE(req: NextRequest) {

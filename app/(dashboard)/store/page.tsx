@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Plus, ShoppingBag, DollarSign, Package, Star,
   Search, MoreHorizontal, Edit3, Trash2, Eye, Download, Loader2, ExternalLink, Check, Palette,
-  Briefcase, RefreshCw, MessageCircle, X as XIcon,
+  Briefcase, RefreshCw, MessageCircle, X as XIcon, Mail,
 } from "lucide-react";
 import { OrderThread } from "@/components/store/order-thread";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -28,16 +28,17 @@ function TypeIcon({ type }: { type: string }) {
 function TypeBadge({ type }: { type: string }) {
   type Meta = { label: string; icon: React.ComponentType<{ className?: string }>; cls: string };
   const meta: Record<string, Meta> = {
-    DIGITAL:      { label: "Digital",      icon: Download,  cls: "bg-sky-50 text-sky-600 border border-sky-100" },
-    PHYSICAL:     { label: "Physical",     icon: Package,   cls: "bg-violet-50 text-violet-600 border border-violet-100" },
-    SERVICE:      { label: "Service",      icon: Briefcase, cls: "bg-orange-50 text-orange-600 border border-orange-100" },
-    SUBSCRIPTION: { label: "Subscription", icon: RefreshCw, cls: "bg-emerald-50 text-emerald-600 border border-emerald-100" },
+    DIGITAL:      { label: "Digital",      icon: Download,  cls: "" },
+    PHYSICAL:     { label: "Physical",     icon: Package,   cls: "" },
+    SERVICE:      { label: "Service",      icon: Briefcase, cls: "" },
+    SUBSCRIPTION: { label: "Subscription", icon: RefreshCw, cls: "" },
   };
-  const m = meta[type] ?? { label: type, icon: Package, cls: "bg-gray-100 text-gray-500 border border-gray-200" };
+  const m = meta[type] ?? { label: type, icon: Package, cls: "" };
   const Icon = m.icon;
+  // Single on-brand blue tint, calm and cohesive; the icon distinguishes the type.
   return (
-    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium", m.cls)}>
-      <Icon className="w-3 h-3" />
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-nexus-50 text-nexus-700 border border-nexus-100">
+      <Icon className="w-3 h-3 text-nexus-400" />
       {m.label}
     </span>
   );
@@ -88,7 +89,7 @@ export default function StorePage() {
   }, []);
 
   useEffect(() => {
-    // Only ever store arrays — an error response ({ error }) would otherwise make
+    // Only ever store arrays, an error response ({ error }) would otherwise make
     // products/orders a non-array and crash the .filter()/.reduce() below.
     fetch("/api/products")
       .then((r) => (r.ok ? r.json() : []))
@@ -204,7 +205,7 @@ export default function StorePage() {
     { label: "Total Revenue", value: formatCurrency(totalRevenue), icon: DollarSign, color: "emerald", loading: loadingOrders },
     { label: "Orders", value: orders.length.toString(), icon: ShoppingBag, color: "blue", loading: loadingOrders },
     { label: "Products", value: products.length.toString(), icon: Package, color: "nexus", loading: loadingProducts },
-    { label: "Avg. Rating", value: avgRating > 0 ? avgRating.toFixed(1) : "—", icon: Star, color: "amber", loading: loadingProducts },
+    { label: "Avg. Rating", value: avgRating > 0 ? avgRating.toFixed(1) : "–", icon: Star, color: "amber", loading: loadingProducts },
   ];
 
   return (
@@ -214,7 +215,7 @@ export default function StorePage() {
           <h1 className="text-2xl font-bold text-gray-900">Store</h1>
           <p className="text-gray-500 text-sm mt-0.5">Manage your products and orders</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/store/bulk">
             <Button variant="outline" size="sm" className="text-gray-600 border-gray-200">Import / Export</Button>
           </Link>
@@ -245,7 +246,7 @@ export default function StorePage() {
           </Link>
           <Link href="/store/subscribers">
             <Button variant="outline" size="sm" className="text-gray-700 border-gray-200">
-              <Star className="w-4 h-4" />Subscribers
+              <Mail className="w-4 h-4" />Email &amp; Newsletter
             </Button>
           </Link>
           <Link href="/store/customize">
@@ -311,8 +312,8 @@ export default function StorePage() {
               <Link href="/store/products/new"><Button variant="lime" size="sm"><Plus className="w-4 h-4" />Add Product</Button></Link>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <table className="w-full">
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-x-auto">
+              <table className="w-full min-w-[480px]">
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left px-5 py-3 text-gray-400 text-xs font-semibold uppercase">Product</th>
@@ -418,8 +419,8 @@ export default function StorePage() {
               )}
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-              <table className="w-full">
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-x-auto">
+              <table className="w-full min-w-[480px]">
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left px-5 py-3 text-gray-400 text-xs font-semibold uppercase">Order</th>
@@ -441,7 +442,7 @@ export default function StorePage() {
                       </td>
                       <td className="px-5 py-3.5">
                         <span className="text-gray-700 text-sm truncate max-w-[180px] block">
-                          {order.items[0]?.product?.name ?? "—"}{order.items.length > 1 ? ` +${order.items.length - 1}` : ""}
+                          {order.items[0]?.product?.name ?? "–"}{order.items.length > 1 ? ` +${order.items.length - 1}` : ""}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 hidden md:table-cell">

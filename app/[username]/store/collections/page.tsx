@@ -9,7 +9,7 @@ import { STORE_THEMES } from "@/lib/store-themes";
 export async function generateMetadata(props: PageProps<"/[username]/store/collections">): Promise<Metadata> {
   const { username } = await props.params;
   const user = await db.user.findUnique({ where: { username }, select: { name: true } });
-  return { title: `Collections — ${user?.name ?? username}` };
+  return { title: `Collections – ${user?.name ?? username}` };
 }
 
 export default async function CollectionsListPage(props: PageProps<"/[username]/store/collections">) {

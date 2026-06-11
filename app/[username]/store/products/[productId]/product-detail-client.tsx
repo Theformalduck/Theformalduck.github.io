@@ -143,7 +143,7 @@ export default function ProductDetailClient({
     return null;
   }, [selectedVariants, variantGroups]);
 
-  // Image of the currently-selected variant (if any has one) — overrides the
+  // Image of the currently-selected variant (if any has one), overrides the
   // main gallery image so picking e.g. a colour swaps the hero photo.
   const activeVariantImage = useMemo(() => {
     for (const [type, variants] of variantGroups) {
@@ -296,7 +296,7 @@ export default function ProductDetailClient({
 
           {/* ── Left: Image gallery ── */}
           {galleryStyle === "stacked" ? (
-            /* Stacked — every image full width, scrolling down */
+            /* Stacked, every image full width, scrolling down */
             <div className="flex flex-col gap-3">
               {(images.length ? images : [null]).map((img, i) => (
                 <div key={i} className="aspect-[3/4] rounded-2xl overflow-hidden relative" style={{ background: cardBg }}>
@@ -310,7 +310,7 @@ export default function ProductDetailClient({
               ))}
             </div>
           ) : galleryStyle === "grid" ? (
-            /* Grid — 2-column mosaic of all images */
+            /* Grid – 2-column mosaic of all images */
             <div className="grid grid-cols-2 gap-3">
               {(images.length ? images : [null]).map((img, i) => (
                 <div key={i} className={`aspect-square rounded-2xl overflow-hidden relative ${i === 0 && images.length > 1 ? "col-span-2 aspect-[3/2]" : ""}`} style={{ background: cardBg }}>
@@ -324,7 +324,7 @@ export default function ProductDetailClient({
               ))}
             </div>
           ) : (
-            /* Thumbnails (default) — thumb strip + main image */
+            /* Thumbnails (default), thumb strip + main image */
             <div className="flex gap-3">
               {images.length > 1 && (
                 <div className="flex flex-col gap-2 w-16 flex-shrink-0">
@@ -507,7 +507,7 @@ export default function ProductDetailClient({
               ))}
             </div>
 
-            {/* Description / details — accordion or tabs (store setting) */}
+            {/* Description / details, accordion or tabs (store setting) */}
             {(() => {
               const specRows = (Array.isArray(product.metafields) ? product.metafields : [])
                 .filter((m): m is { label: string; value: string } => !!m && typeof m.label === "string" && !!m.label.trim());
@@ -613,7 +613,7 @@ export default function ProductDetailClient({
 
           {reviewSuccess && (
             <div className="mb-8 flex items-center gap-2 text-emerald-600 text-sm font-medium">
-              <Check className="w-4 h-4" /> Review submitted — thank you!
+              <Check className="w-4 h-4" /> Review submitted, thank you!
             </div>
           )}
 

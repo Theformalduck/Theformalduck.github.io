@@ -16,6 +16,7 @@ import {
   type StoreSettings, type CustomButton, type HeroItem,
 } from "@/lib/store-themes";
 import { StoreSections } from "./store-sections";
+import { SelloraBadge } from "@/components/sellora-badge";
 import { isCoreItem, defaultHomeLayout, type LayoutItem } from "@/lib/store-sections";
 import { useDisplayCurrency, useFmt, CurrencyProvider, CurrencySwitcher } from "./currency";
 import { StoreScripts } from "./store-scripts";
@@ -110,7 +111,7 @@ function bgEffectStyle(effect: string, dark: boolean, accent: string): React.CSS
   }
   if (effect === "gradient")
     // Anchored to the top of the (fixed) viewport so the accent glow stays
-    // visible in the content area while scrolling — not buried behind the hero.
+    // visible in the content area while scrolling, not buried behind the hero.
     return { backgroundImage: `radial-gradient(ellipse 120% 70% at 50% 0%, ${accent}33 0%, transparent 60%)` };
   return {};
 }
@@ -171,12 +172,12 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
   };
 
   // Editor mode: when rendered inside the customize iframe (?preview=1), clicking
-  // a section selects it — we postMessage the section id up to the customizer,
+  // a section selects it, we postMessage the section id up to the customizer,
   // which opens the matching panel. Click-to-edit, across the iframe boundary.
   //
   // This must be scoped to the iframe ONLY. The real storefront is always a
   // top-level window, so requiring `isEmbedded` guarantees the editor chrome
-  // (click interception + hover outline) never leaks onto the live site — even
+  // (click interception + hover outline) never leaks onto the live site, even
   // for the logged-in owner, and even if a stale ?preview=1 is in the URL.
   const [isEmbedded, setIsEmbedded] = useState(false);
   useEffect(() => {
@@ -342,7 +343,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
         const valid = (Array.isArray(parsed) ? parsed : []).filter(
           (i: unknown) => i != null && typeof i === "object" && "product" in (i as object) && (i as { product?: unknown }).product != null
         );
-        // Hydrating cart from localStorage on mount — must run client-side.
+        // Hydrating cart from localStorage on mount, must run client-side.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setCart(valid);
         if (valid.length !== parsed?.length) {
@@ -382,7 +383,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
 
   // Owner-only: keep the storefront in sync with the customize editor.
   // In PREVIEW mode (the customize iframe / ?preview=1) the BroadcastChannel is
-  // the source of truth — we never poll the live columns there, otherwise the
+  // the source of truth, we never poll the live columns there, otherwise the
   // 1.5s poll would clobber in-progress edits. In a normal owner tab we poll the
   // live (published) columns so the page reflects publishes.
   useEffect(() => {
@@ -391,7 +392,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
 
     // The broadcast carries the editor's live (unsaved) state, which is fresher
     // than the debounced draft on the server. While edits are streaming in, the
-    // draft poll must NOT run — otherwise it reverts to a stale draft and the
+    // draft poll must NOT run, otherwise it reverts to a stale draft and the
     // change appears to "glitch" back. The poll only acts once editing settles.
     let lastBroadcastAt = 0;
 
@@ -626,7 +627,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
 
   // Heroes whose top sits on the THEME background (not a darkened image/gradient).
   // Over these, a transparent nav must use the theme's own text colour or it
-  // vanishes on light themes — only the image/overlay heroes get forced white.
+  // vanishes on light themes, only the image/overlay heroes get forced white.
   const navOverThemeBg = ["editorial", "showcase", "split", "minimal"].includes(heroStyle);
   const transparentNavWhite = isTransparentNav && !scrolled && !navOverThemeBg;
 
@@ -660,7 +661,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
   const renderHero = () => {
     const hasBanner = !!liveSettings.bannerImage;
     const taglineText = liveSettings.tagline || user.bio;
-    // Optional custom hero copy — falls back to tagline/name when unset.
+    // Optional custom hero copy, falls back to tagline/name when unset.
     const heroTitle = liveSettings.heroHeading || taglineText || displayName;
     const heroSub = liveSettings.heroSubheading || null;
 
@@ -750,7 +751,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
       );
     }
 
-    // ── Showcase — headline + CTA on the left, image card on the right ──
+    // ── Showcase, headline + CTA on the left, image card on the right ──
     if (heroStyle === "showcase") {
       const featuredProduct =
         activeProducts.find(p => featuredIds.includes(p.id) && p.images.length > 0) ||
@@ -789,7 +790,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
       );
     }
 
-    // ── Marquee — full-bleed image with a giant scrolling-text carousel ──
+    // ── Marquee, full-bleed image with a giant scrolling-text carousel ──
     if (heroStyle === "marquee") {
       const marqueeText = (liveSettings.heroMarqueeText || heroTitle || displayName).trim();
       const speed = liveSettings.tickerSpeed === "slow" ? 45 : liveSettings.tickerSpeed === "fast" ? 18 : 30;
@@ -813,14 +814,14 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
             : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent}cc 0%, #0a0a0a 100%)` }} />
           }
           <div className="absolute inset-0 bg-black" style={{ opacity: heroOverlay / 100 }} />
-          {/* Optional headline above the marquee — follows the Text Alignment setting */}
+          {/* Optional headline above the marquee, follows the Text Alignment setting */}
           {(liveSettings.heroHeading || heroSub) && (
             <div className="relative z-10 px-6 sm:px-12 mb-6" style={{ textAlign: (liveSettings.heroTextAlign as "left" | "center" | "right") || "left" }}>
               {liveSettings.heroHeading && <h2 className="text-white font-bold drop-shadow-lg" style={{ fontSize: "clamp(1.25rem, 2.5vw, 2rem)" }}>{liveSettings.heroHeading}</h2>}
               {heroSub && <p className="text-white/75 text-sm sm:text-base mt-1 max-w-xl inline-block">{heroSub}</p>}
             </div>
           )}
-          {/* Giant scrolling text — duplicated for a seamless loop */}
+          {/* Giant scrolling text, duplicated for a seamless loop */}
           <div className="relative z-10 overflow-hidden pb-6 sm:pb-10" style={{ maskImage: "linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)" }}>
             <div className="marquee-anim flex w-max whitespace-nowrap" style={{ animation: `nexus-hero-marquee ${speed}s linear infinite` }}>
               {repeats.map((_, i) => (
@@ -835,7 +836,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
       );
     }
 
-    // ── Editorial — large headline above a wide image ──
+    // ── Editorial, large headline above a wide image ──
     if (heroStyle === "editorial") {
       const alignCls = heroTextAlign.cls;
       return (
@@ -892,7 +893,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
       );
     }
 
-    // product hero — bold left-aligned text over a gradient background
+    // product hero, bold left-aligned text over a gradient background
     if (heroStyle === "product") {
       const heroBg = hasBanner
         ? undefined
@@ -941,7 +942,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
       );
     }
 
-    // storefront / centered — Shopify Dawn style: full-width banner, centered text lower half, outlined CTA
+    // storefront / centered – Shopify Dawn style: full-width banner, centered text lower half, outlined CTA
     const isStorefront = heroStyle === "storefront" || heroStyle === "centered";
     if (isStorefront) {
       const heroBg = hasBanner ? undefined : `linear-gradient(160deg, ${accent}cc 0%, ${accent}88 100%)`;
@@ -1420,7 +1421,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
           <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed text-sm"
             style={{ borderColor: accent, background: `${accent}12`, color: accent }}>
             <Zap className="w-4 h-4 flex-shrink-0" />
-            <span className="font-medium">These are sample products — <Link href="/store/products/new" className="underline underline-offset-2 hover:opacity-75">add your first real product</Link> to replace them.</span>
+            <span className="font-medium">These are sample products – <Link href="/store/products/new" className="underline underline-offset-2 hover:opacity-75">add your first real product</Link> to replace them.</span>
           </div>
         )}
         <div className="mt-0">
@@ -1875,7 +1876,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
         </div>
       )}
 
-      {/* ── Navbar — Shopify Dawn style: logo left · nav center · icons right ── */}
+      {/* ── Navbar – Shopify Dawn style: logo left · nav center · icons right ── */}
       <header
         data-edit-section="header"
         className={`${stickyHeader ? "sticky top-0" : ""} z-40 transition-all duration-300 ${(!isTransparentNav || scrolled) ? "border-b" : ""}`}
@@ -1887,7 +1888,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
       >
         <div className="max-w-full mx-auto px-10 sm:px-40 flex items-center relative" style={{ height: navHeightPx }}>
 
-          {/* Left: logo or store name — position can be overridden via elementPositions.navLogo */}
+          {/* Left: logo or store name, position can be overridden via elementPositions.navLogo */}
           {(() => {
             const logoPos = liveSettings.elementPositions?.navLogo;
             const logoContent = liveSettings.logoImage
@@ -2051,7 +2052,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
                       ))}
                       {products.filter(p => p.name.toLowerCase().includes(q) || (p.description ?? "").toLowerCase().includes(q) || (p.type ?? "").toLowerCase().includes(q)).length > 6 && (
                         <div className="px-10 sm:px-40 py-2 border-t text-xs" style={{ borderColor: theme.border, color: theme.muted }}>
-                          Showing top 6 results — refine your search to narrow down
+                          Showing top 6 results, refine your search to narrow down
                         </div>
                       )}
                     </>
@@ -2068,6 +2069,9 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
 
       {/* ── Footer ── */}
       <div data-edit-section="social">{renderFooter()}</div>
+
+      {/* ── Sellora badge (floating, always on screen) ── */}
+      <SelloraBadge />
 
       {/* ── Popup ── */}
       <AnimatePresence>
@@ -2529,7 +2533,7 @@ function ProductCard({
             Sold out
           </div>
         )}
-        {/* Quick add — slides up on hover */}
+        {/* Quick add, slides up on hover */}
         {!isOutOfStock && showQuickAdd && (
           <div className="absolute bottom-0 left-0 right-0 translate-y-full group-hover:translate-y-0 transition-transform duration-200 ease-out">
             <button

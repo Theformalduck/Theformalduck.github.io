@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   }
 
   const origin = req.headers.get("origin") ?? process.env.NEXTAUTH_URL ?? "";
-  const label = reward ? `${campaign.title} — ${reward.title}` : campaign.title;
+  const label = reward ? `${campaign.title} – ${reward.title}` : campaign.title;
 
   try {
     const checkout = await createCheckoutSession({

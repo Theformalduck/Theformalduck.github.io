@@ -152,7 +152,7 @@ export async function GET() {
     })),
     notifications,
     user,
-    // Onboarding "success path" — drives the dashboard Get-Started checklist.
+    // Onboarding "success path", drives the dashboard Get-Started checklist.
     setup: {
       hasUsername: !!user?.username,
       hasStore: !!store?.name,

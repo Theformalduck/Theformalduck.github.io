@@ -1,11 +1,11 @@
-// ── Store homepage section builder — shared types, defaults & metadata ────────
+// ── Store homepage section builder, shared types, defaults & metadata ────────
 // Used by both the customize-page builder and the public store renderer.
 
 export type StoreSectionType =
   | "banner" | "richtext" | "featured" | "gallery"
   | "testimonials" | "faq" | "video" | "newsletter" | "blocks";
 
-// ── Per-section design (Shopify-style) — all optional; fall back to per-type
+// ── Per-section design (Shopify-style), all optional; fall back to per-type
 // natural defaults in SECTION_NATURAL so existing sections keep their look. ──
 export type SectionWidth = "narrow" | "normal" | "wide" | "full";
 export type SectionPad = "none" | "sm" | "md" | "lg" | "xl";
@@ -64,7 +64,7 @@ export interface NewsletterSection extends Base {
   heading: string; subtext: string; buttonLabel: string;
 }
 
-// ── Blocks — composable sub-elements inside a Flexible ("blocks") section ───────
+// ── Blocks, composable sub-elements inside a Flexible ("blocks") section ───────
 export type BlockType = "heading" | "text" | "button" | "marquee" | "image" | "divider" | "spacer";
 export type BlockAlign = "left" | "center" | "right";
 
@@ -72,7 +72,7 @@ interface BlockBase { id: string; type: BlockType }
 export interface HeadingBlock extends BlockBase { type: "heading"; text: string; size: "sm" | "md" | "lg" | "xl"; align: BlockAlign }
 export interface TextBlock    extends BlockBase { type: "text"; text: string; align: BlockAlign }
 export interface ButtonBlock  extends BlockBase { type: "button"; label: string; url: string; variant: "solid" | "outline"; align: BlockAlign }
-// Big animated scrolling text — straight ticker or a curved arc (Squarespace-style).
+// Big animated scrolling text, straight ticker or a curved arc (Squarespace-style).
 export interface MarqueeBlock extends BlockBase { type: "marquee"; text: string; size: "md" | "lg" | "xl"; speed: "slow" | "normal" | "fast"; direction: "left" | "right"; curved: boolean }
 export interface ImageBlock   extends BlockBase { type: "image"; url: string; alt: string; rounded: boolean; maxWidth: "sm" | "md" | "lg" | "full"; align: BlockAlign }
 export interface DividerBlock extends BlockBase { type: "divider" }
@@ -87,7 +87,7 @@ export function defaultBlock(type: BlockType): Block {
   const id = blockUid();
   switch (type) {
     case "heading": return { id, type, text: "Heading", size: "lg", align: "left" };
-    case "text":    return { id, type, text: "Add your text here — tell your story, describe a product, or share details.", align: "left" };
+    case "text":    return { id, type, text: "Add your text here, tell your story, describe a product, or share details.", align: "left" };
     case "button":  return { id, type, label: "Shop now", url: "#products", variant: "solid", align: "left" };
     case "marquee": return { id, type, text: "New arrivals · Free shipping · Shop the latest", size: "lg", speed: "normal", direction: "left", curved: false };
     case "image":   return { id, type, url: "", alt: "", rounded: true, maxWidth: "full", align: "center" };
@@ -126,7 +126,7 @@ export function defaultSection(type: StoreSectionType): StoreSection {
   const id = sectionUid();
   switch (type) {
     case "banner":
-      return { id, type, heading: "Big seasonal sale", subtext: "Up to 40% off — limited time only.", ctaLabel: "Shop now", ctaUrl: "#products", image: "", align: "center" };
+      return { id, type, heading: "Big seasonal sale", subtext: "Up to 40% off, limited time only.", ctaLabel: "Shop now", ctaUrl: "#products", image: "", align: "center" };
     case "richtext":
       return { id, type, heading: "Our story", body: "Tell customers what makes your shop special. Share your mission, materials, or what to expect.", align: "center" };
     case "featured":
@@ -136,7 +136,7 @@ export function defaultSection(type: StoreSectionType): StoreSection {
     case "testimonials":
       return { id, type, heading: "What customers say", items: [
         { name: "Alex M.", quote: "Amazing quality and fast shipping. Will buy again!", rating: 5 },
-        { name: "Jordan P.", quote: "Exactly what I wanted — exceeded expectations.", rating: 5 },
+        { name: "Jordan P.", quote: "Exactly what I wanted, exceeded expectations.", rating: 5 },
       ] };
     case "faq":
       return { id, type, heading: "Frequently asked questions", items: [
@@ -194,7 +194,7 @@ export type CoreSectionType =
 
 export interface CoreLayoutItem { id: string; core: CoreSectionType }
 
-// An item in the home page layout — either a built-in core section (configured
+// An item in the home page layout, either a built-in core section (configured
 // in its own panel) or a custom drag-and-drop block.
 export type LayoutItem = CoreLayoutItem | StoreSection;
 
@@ -229,7 +229,7 @@ export function layoutItemTitle(i: LayoutItem): string {
   return isCoreItem(i) ? (CORE_META[i.core]?.label ?? i.core) : sectionTitle(i);
 }
 
-// ── Custom pages — user-created pages built from sections, each at /p/{slug} ─────
+// ── Custom pages, user-created pages built from sections, each at /p/{slug} ─────
 export interface CustomPage {
   id: string;
   title: string;

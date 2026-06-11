@@ -5,7 +5,7 @@ import { LayoutTemplate, DollarSign, ShoppingBag, Users } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Sellora is the all-in-one operating system for creators — portfolio, crowdfunding, store, community, and analytics in one place.",
+  description: "Sellora is the all-in-one operating system for creators, portfolio, crowdfunding, store, community, and analytics in one place.",
 };
 
 const pillars = [
@@ -19,17 +19,17 @@ export default function AboutPage() {
   return (
     <InfoPage
       title="About Sellora"
-      subtitle="The creator operating system — build, launch, and grow your business all in one place."
+      subtitle="The creator operating system, build, launch, and grow your business all in one place."
     >
       <h2>Our mission</h2>
       <p>
-        Creators today juggle a dozen disconnected tools — one for a portfolio, another for
+        Creators today juggle a dozen disconnected tools, one for a portfolio, another for
         crowdfunding, a third for selling, and yet more for community and analytics. Every tool
         means another login, another subscription, and another tab to switch between.
       </p>
       <p>
         <strong>Sellora brings it all into one platform.</strong> Your portfolio, store, campaigns,
-        community, and analytics live together, share one audience, and work as a single business —
+        community, and analytics live together, share one audience, and work as a single business –
         so you can spend less time managing tools and more time creating.
       </p>
 
@@ -49,7 +49,7 @@ export default function AboutPage() {
       <h2>Built for independent creators</h2>
       <p>
         Whether you’re a designer, developer, musician, photographer, writer, or entrepreneur,
-        Sellora gives you professional tools without the enterprise complexity — and a fair,
+        Sellora gives you professional tools without the enterprise complexity, and a fair,
         transparent fee structure so the value you create stays with you.
       </p>
 

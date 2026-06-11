@@ -33,7 +33,7 @@ const mainFeatures = [
     label: "Crowdfunding",
     title: "Fund your next project the modern way",
     description:
-      "Set a goal, offer rewards, track backers in real time. Campaign pages that convert — with built-in fraud protection and direct Stripe payouts.",
+      "Set a goal, offer rewards, track backers in real time. Campaign pages that convert, with built-in fraud protection and direct Stripe payouts.",
     highlights: ["Reward tiers", "Stretch goals", "Live tracking", "Backer updates"],
     accent: "#fdf4ff",
     iconColor: "#9333ea",
@@ -41,9 +41,9 @@ const mainFeatures = [
   {
     icon: ShoppingBag,
     label: "Digital Store",
-    title: "Sell anything — digital or physical",
+    title: "Sell anything, digital or physical",
     description:
-      "Launch your storefront in minutes. Digital downloads, physical goods, courses, subscriptions — all under one roof with global shipping built in.",
+      "Launch your storefront in minutes. Digital downloads, physical goods, courses, subscriptions, all under one roof with global shipping built in.",
     highlights: ["Digital files", "Subscriptions", "Discount codes", "Inventory"],
     accent: "#fffbeb",
     iconColor: "#d97706",
@@ -53,7 +53,7 @@ const mainFeatures = [
     label: "Community",
     title: "Turn followers into a real audience",
     description:
-      "Posts, updates, discussions — all connected to your creator profile. Get verified, grow your following, and convert fans into customers.",
+      "Posts, updates, discussions, all connected to your creator profile. Get verified, grow your following, and convert fans into customers.",
     highlights: ["Follow system", "Activity feed", "Creator badges", "DMs"],
     accent: "#f0fdf4",
     iconColor: "#16a34a",
@@ -63,7 +63,7 @@ const mainFeatures = [
     label: "AI Tools",
     title: "An AI that actually understands creators",
     description:
-      "Write campaign copy, generate portfolio text, optimize SEO, and get personalized growth suggestions — all trained on what works for creators.",
+      "Write campaign copy, generate portfolio text, optimize SEO, and get personalized growth suggestions, all trained on what works for creators.",
     highlights: ["AI copywriting", "SEO optimizer", "Brand assistant", "Logo gen"],
     accent: "#fdf2f8",
     iconColor: "#db2777",
@@ -73,7 +73,7 @@ const mainFeatures = [
     label: "Analytics",
     title: "Numbers that tell you something useful",
     description:
-      "Revenue, conversions, traffic, audience growth — all on one dashboard. Real-time data, clean charts, and insights you can actually act on.",
+      "Revenue, conversions, traffic, audience growth, all on one dashboard. Real-time data, clean charts, and insights you can actually act on.",
     highlights: ["Real-time", "Revenue insights", "Traffic sources", "Custom reports"],
     accent: "#f0f9ff",
     iconColor: "#0284c7",
@@ -171,7 +171,7 @@ export function Features() {
           </h2>
           <p className="text-gray-500 text-lg leading-relaxed">
             Stop juggling six different subscriptions. Sellora replaces your portfolio site,
-            crowdfunding page, Shopify store, and community — in one login.
+            crowdfunding page, Shopify store, and community, in one login.
           </p>
         </motion.div>
 

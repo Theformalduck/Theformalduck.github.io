@@ -8,7 +8,7 @@ const FEEDBACK_TO = "austinlee.spencer2@gmail.com";
 const CATEGORIES = ["Idea", "Bug", "Question", "Other"];
 
 export async function POST(req: NextRequest) {
-  // Require a signed-in user — keeps the inbox free of anonymous spam and lets
+  // Require a signed-in user, keeps the inbox free of anonymous spam and lets
   // us attribute / reply to the sender.
   const session = await auth();
   if (!session?.user?.id) {

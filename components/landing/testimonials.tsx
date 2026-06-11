@@ -9,7 +9,7 @@ const testimonials = [
     role: "Indie Game Developer",
     initials: "AR",
     avatarBg: "#0ea5e9",
-    quote: "I raised $45K for my game in 3 weeks. The campaign tools are genuinely impressive — the AI-generated copy alone probably added 20% to my funding.",
+    quote: "I raised $45K for my game in 3 weeks. The campaign tools are genuinely impressive, the AI-generated copy alone probably added 20% to my funding.",
     metric: "$45K",
     metricLabel: "raised in 21 days",
     cardBg: "#f0f9ff",
@@ -53,7 +53,7 @@ const testimonials = [
     role: "Freelance Developer",
     initials: "JK",
     avatarBg: "#7c3aed",
-    quote: "As a developer, I was skeptical about no-code tools. But the Sellora portfolio builder is genuinely impressive — the output is clean and the SEO is excellent.",
+    quote: "As a developer, I was skeptical about no-code tools. But the Sellora portfolio builder is genuinely impressive, the output is clean and the SEO is excellent.",
     metric: "Top 3",
     metricLabel: "Google for my niche",
     cardBg: "#fdf4ff",
@@ -140,7 +140,7 @@ export function Testimonials() {
             <span className="gradient-text">Sellora.</span>
           </h2>
           <p className="text-gray-500 text-lg leading-relaxed">
-            From indie makers to digital educators — here's what our creators say.
+            From indie makers to digital educators, here's what our creators say.
           </p>
         </motion.div>
 

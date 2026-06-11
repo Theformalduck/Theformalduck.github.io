@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿"use client";
+﻿﻿﻿"use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
@@ -354,7 +354,7 @@ const T = {
 // X positions and widths scale by `sx` so the layout spreads to fill the width;
 // element HEIGHTS and FONT SIZES are never touched (text/buttons keep their size).
 // Circles and SVGs scale both dimensions (so they stay round, not stretched) and are
-// re-centred vertically — this keeps concentric groups (e.g. the vinyl rings) aligned.
+// re-centred vertically, this keeps concentric groups (e.g. the vinyl rings) aligned.
 const scaleDocX = (doc: CanvasDoc, sx: number): CanvasDoc => ({
   ...doc,
   pages: doc.pages.map(p => ({
@@ -728,7 +728,7 @@ const musicArtistTemplate = (): CanvasDoc => {
     T.txt("ARTIST NAME",15,80,21,"#00e5ff",{font:"Bebas Neue",ls:6,w:200,z:11}),
     T.txt("Music    Shows    Press    Contact",12,690,22,"#4a4a6a",{font:"Inter",w:450,align:"right",z:11}),
     T.rect(0,66,1200,1,"rgba(0,229,255,0.08)",{z:10}),
-    // concentric vinyl circles — all centered at (1080, 260)
+    // concentric vinyl circles, all centered at (1080, 260)
     T.circ(740,-80,680,680,"#0c0c22",{z:1}),
     T.circ(820,0,520,520,"#0a0a1a",{z:1,stroke:"rgba(0,229,255,0.07)",strokeW:1}),
     T.circ(900,80,360,360,"#0d0d20",{z:1,stroke:"rgba(0,229,255,0.1)",strokeW:1}),
@@ -860,19 +860,19 @@ const agencyTemplate = (): CanvasDoc => {
     {...T.btn("Get a Quote",40,830,300,"#f43f5e","#ffffff",8),z:3} as ButtonElem,
     T.rect(460,70,680,158,"#f8fafc",{radius:14,stroke:"#f1f5f9",strokeW:1,z:2,anim:{type:"slideLeft",duration:0.6,delay:0.3,easing:"ease-out",repeat:"once"}}),
     T.rect(460,70,680,4,"#f43f5e",{radius:14,z:3}),
-    T.txt("01 — Brand Identity",20,498,96,"#0a0a0a",{font:"Montserrat",fontWeight:700,w:500,z:3}),
+    T.txt("01 – Brand Identity",20,498,96,"#0a0a0a",{font:"Montserrat",fontWeight:700,w:500,z:3}),
     T.txt("Logo, color palette, typography, brand guidelines, and full visual identity systems.",14,498,132,"#64748b",{font:"Inter",lh:1.6,w:580,z:3}),
     T.rect(460,248,680,158,"#f8fafc",{radius:14,stroke:"#f1f5f9",strokeW:1,z:2,anim:{type:"slideLeft",duration:0.6,delay:0.4,easing:"ease-out",repeat:"once"}}),
     T.rect(460,248,680,4,"#6366f1",{radius:14,z:3}),
-    T.txt("02 — Web Design & Dev",20,498,274,"#0a0a0a",{font:"Montserrat",fontWeight:700,w:520,z:3}),
+    T.txt("02 – Web Design & Dev",20,498,274,"#0a0a0a",{font:"Montserrat",fontWeight:700,w:520,z:3}),
     T.txt("Beautiful, conversion-focused websites and landing pages built to perform.",14,498,310,"#64748b",{font:"Inter",lh:1.6,w:580,z:3}),
     T.rect(460,426,680,158,"#0a0a0a",{radius:14,z:2,anim:{type:"slideLeft",duration:0.6,delay:0.5,easing:"ease-out",repeat:"once"}}),
     T.rect(460,426,4,158,"#f43f5e",{z:3}),
-    T.txt("03 — Campaigns",20,498,452,"#ffffff",{font:"Montserrat",fontWeight:700,w:500,z:3}),
+    T.txt("03 – Campaigns",20,498,452,"#ffffff",{font:"Montserrat",fontWeight:700,w:500,z:3}),
     T.txt("End-to-end strategy, creative assets, and performance creative that converts.",14,498,488,"#666666",{font:"Inter",lh:1.6,w:580,z:3}),
     T.rect(460,604,680,158,"#f8fafc",{radius:14,stroke:"#f1f5f9",strokeW:1,z:2,anim:{type:"slideLeft",duration:0.6,delay:0.6,easing:"ease-out",repeat:"once"}}),
     T.rect(460,604,680,4,"#06b6d4",{radius:14,z:3}),
-    T.txt("04 — Strategy & Consulting",20,498,630,"#0a0a0a",{font:"Montserrat",fontWeight:700,w:560,z:3}),
+    T.txt("04 – Strategy & Consulting",20,498,630,"#0a0a0a",{font:"Montserrat",fontWeight:700,w:560,z:3}),
     T.txt("Market positioning, competitor analysis, and go-to-market planning.",14,498,666,"#64748b",{font:"Inter",lh:1.6,w:580,z:3}),
     T.txt("Free 30-min strategy call with every project →",14,498,786,"#f43f5e",{font:"Inter",fontWeight:600,w:460,z:3}),
   ]};
@@ -1222,7 +1222,7 @@ const fitnessTemplate = (): CanvasDoc => {
     T.txt("Overall Wellbeing",12,120,666,"#f5f5f0",{font:"Inter",w:160,z:3}), T.bar(258,668,420,94,"#84cc16","#1a2a1a"),
     {...T.btn("Start My Transformation",740,622,320,"#f97316","#080a08",6),z:3} as ButtonElem,
     T.txt("30-day money-back guarantee",12,740,692,"#2a3a2a",{font:"Inter",w:280,align:"center",z:3}),
-    T.txt("\"The best investment I've made in myself\" — 500+ satisfied clients",14,240,736,"#2a3a2a",{font:"Inter",fontWeight:500,w:720,align:"center",z:2}),
+    T.txt("\"The best investment I've made in myself\" – 500+ satisfied clients",14,240,736,"#2a3a2a",{font:"Inter",fontWeight:500,w:720,align:"center",z:2}),
   ]};
   return scaleDocX({ version:1, pages:[p1,p2,p3] }, 1920/1200);
 };
@@ -1430,7 +1430,7 @@ const weddingTemplate = (): CanvasDoc => {
     T.rect(680,100,440,520,"#f0e4dd",{radius:24,z:2,anim:{type:"fadeIn",duration:0.8,delay:0.3,easing:"ease-out",repeat:"once"}}),
     T.txt("YOUR COUPLE\nPHOTO HERE",14,760,330,"#d4bdb5",{font:"Inter",fontWeight:700,ls:2,lh:1.5,w:280,align:"center",z:3}),
     T.rect(710,548,360,60,"#ffffff",{radius:30,z:3}),
-    T.txt("✦  Sarah & James  —  June 14  ✦",12,728,568,"#c89898",{font:"Inter",fontWeight:500,ls:1,w:324,align:"center",z:4}),
+    T.txt("✦  Sarah & James  –  June 14  ✦",12,728,568,"#c89898",{font:"Inter",fontWeight:500,ls:1,w:324,align:"center",z:4}),
     T.txt("WEDDING PLANNING & FLORALS",11,80,168,"#7a9e7e",{font:"Inter",fontWeight:600,ls:2,w:340,z:3,anim:{type:"fadeIn",duration:0.6,delay:0.1,easing:"ease-out",repeat:"once"}}),
     T.txt("Every love story\ndeserves a\nperfect chapter.",66,80,200,"#2a1a1a",{font:"Playfair Display",fontWeight:700,lh:1.07,w:560,z:3,anim:{type:"slideUp",duration:0.9,delay:0.2,easing:"ease-out",repeat:"once"}}),
     T.txt("Boutique wedding planning and floral design for couples who want every detail to feel effortlessly beautiful. NYC · Hamptons · Destination.",16,80,450,"#8a7060",{font:"Inter",lh:1.75,w:530,z:3,anim:{type:"fadeIn",duration:0.8,delay:0.5,easing:"ease-out",repeat:"once"}}),
@@ -1464,8 +1464,8 @@ const weddingTemplate = (): CanvasDoc => {
     T.txt("From $3,200",12,808,460,"#7a9e7e",{font:"Inter",fontWeight:600,w:180,z:3}),
     {...T.btn("Learn More",808,494,264,"transparent","#2a1a1a",30,"#e0d0c8",1),z:3} as ButtonElem,
     T.rect(80,660,1040,196,"#f0e4dd",{radius:20,z:2,anim:{type:"slideUp",duration:0.8,delay:0.5,easing:"ease-out",repeat:"once"}}),
-    T.txt("\"Bloom & Co. turned our vision into something beyond what we ever imagined.\nEvery detail was perfect — from the florals to the final dance. Our guests\nstill talk about it two years later.\"",16,140,694,"#2a1a1a",{font:"Playfair Display",fontWeight:400,lh:1.65,w:920,align:"center",z:3}),
-    T.txt("— Emily & James T., June 2025",12,440,806,"#c89898",{font:"Inter",fontWeight:500,w:320,align:"center",z:3}),
+    T.txt("\"Bloom & Co. turned our vision into something beyond what we ever imagined.\nEvery detail was perfect, from the florals to the final dance. Our guests\nstill talk about it two years later.\"",16,140,694,"#2a1a1a",{font:"Playfair Display",fontWeight:400,lh:1.65,w:920,align:"center",z:3}),
+    T.txt("– Emily & James T., June 2025",12,440,806,"#c89898",{font:"Inter",fontWeight:500,w:320,align:"center",z:3}),
   ]};
   return scaleDocX({ version:1, pages:[p1,p2] }, 1920/1200);
 };
@@ -1555,7 +1555,7 @@ const actorTemplate = (): CanvasDoc => {
     T.rect(620,560,500,158,"#111009",{radius:12,stroke:"rgba(201,169,110,0.1)",strokeW:1,z:2,anim:{type:"fadeIn",duration:0.7,delay:0.9,easing:"ease-out",repeat:"once"}}),
     T.txt("✦",16,648,590,"#c9a96e",{font:"Inter",w:20,z:3}),
     T.txt("\"One of the most compelling performances of the year. A star in the making.\"",15,676,588,"#f5f0e8",{font:"Playfair Display",fontWeight:400,lh:1.55,w:420,z:3}),
-    T.txt("— The Hollywood Reporter",11,648,672,"#3a3020",{font:"Inter",fontWeight:600,w:280,z:3}),
+    T.txt("– The Hollywood Reporter",11,648,672,"#3a3020",{font:"Inter",fontWeight:600,w:280,z:3}),
   ]};
 
   const p2: Page = { id:uid(), label:"Credits", bg:"#090907", h:960, elems:[
@@ -1592,7 +1592,7 @@ const actorTemplate = (): CanvasDoc => {
     ...[
       {y:"2024",r:"Recurring · Kevin Park",p:"Meridian (Netflix)"},
       {y:"2023",r:"Guest · Dr. Alvarez",p:"Grey's Anatomy (ABC)"},
-      {y:"2023",r:"Lead · James Frost",p:"The Bureau — Pilot"},
+      {y:"2023",r:"Lead · James Frost",p:"The Bureau – Pilot"},
       {y:"2022",r:"Recurring · Tom Reeves",p:"Succession (HBO)"},
       {y:"2022",r:"Guest · Officer Mills",p:"Law & Order (NBC)"},
       {y:"2021",r:"Series Reg. · Nathan",p:"Sundown (Hulu)"},
@@ -1609,7 +1609,7 @@ const actorTemplate = (): CanvasDoc => {
       {y:"2023",r:"Atticus Finch",p:"Roundabout Theatre"},
       {y:"2022",r:"Stanley Kowalski",p:"Signature Theatre"},
       {y:"2021",r:"Iago",p:"Shakespeare in the Park"},
-      {y:"2020",r:"Willy Loman",p:"Broadway — Lyceum"},
+      {y:"2020",r:"Willy Loman",p:"Broadway – Lyceum"},
     ].flatMap((c,i)=>[
       T.txt(c.y,10,832,384+i*56,"#2a2416",{font:"Inter",fontWeight:600,w:46,z:3}),
       T.txt(c.r,14,882,382+i*56,"#f5f0e8",{font:"Inter",fontWeight:600,w:200,z:3}),
@@ -1661,7 +1661,7 @@ const actorTemplate = (): CanvasDoc => {
     T.txt("RP British · Standard American · Southern American\nNew York · Boston · Irish · Australian · Scottish",13,560,512,"#5a5030",{font:"Inter",lh:1.65,w:530,z:3}),
     T.rect(560,572,530,1,"rgba(201,169,110,0.12)",{z:3}),
     T.txt("REPRESENTED BY",9,560,590,"#2a2416",{font:"Inter",fontWeight:700,ls:4,w:280,z:3}),
-    T.txt("Creative Artists Agency — (212) 555-0142",14,560,612,"#c9a96e",{font:"Inter",fontWeight:600,w:480,z:3}),
+    T.txt("Creative Artists Agency – (212) 555-0142",14,560,612,"#c9a96e",{font:"Inter",fontWeight:600,w:480,z:3}),
     T.txt("For auditions and casting enquiries, contact the agent directly.",12,560,640,"#2a2416",{font:"Inter",w:500,z:3}),
     {...T.btn("▶  Demo Reel",560,672,198,"#c9a96e","#090907",4),z:3} as ButtonElem,
     {...T.btn("Download Headshots",778,672,240,"transparent","#c9a96e",4,"#2a2416",1),z:3} as ButtonElem,
@@ -1681,7 +1681,7 @@ const reflectTemplate = (): CanvasDoc => {
     T.rect(470,150,200,242,"linear-gradient(160deg,#e9eaec,#cfd2d8)",{radius:12,z:2,anim:{type:"fadeIn",duration:0.7,delay:0.3,easing:"ease-out",repeat:"once"}}),
     T.rect(820,110,300,200,"linear-gradient(150deg,#f15a24,#7d1f3f)",{radius:12,z:2,anim:{type:"fadeIn",duration:0.7,delay:0.4,easing:"ease-out",repeat:"once"}}),
     T.txt("Reflect.",172,36,448,"#0e0e10",{font:"Montserrat",fontWeight:800,ls:-6,lh:0.9,w:1130,z:3,anim:{type:"slideUp",duration:0.9,delay:0.3,easing:"ease-out",repeat:"once"}}),
-    T.txt("Design beyond boundaries — a multidisciplinary studio crafting brands, objects & spaces.",17,82,700,"#6b6b73",{font:"Inter",lh:1.6,w:620,z:3,anim:{type:"fadeIn",duration:0.8,delay:0.6,easing:"ease-out",repeat:"once"}}),
+    T.txt("Design beyond boundaries, a multidisciplinary studio crafting brands, objects & spaces.",17,82,700,"#6b6b73",{font:"Inter",lh:1.6,w:620,z:3,anim:{type:"fadeIn",duration:0.8,delay:0.6,easing:"ease-out",repeat:"once"}}),
   ]};
   const p2: Page = { id:uid(), label:"Work", bg:"#f4f4f5", h:880, elems:[
     T.txt("SELECTED WORK",12,80,80,"#6b6b73",{font:"Montserrat",fontWeight:800,ls:2,w:300,z:2}),
@@ -1725,7 +1725,7 @@ const wandererTemplate = (): CanvasDoc => {
     T.txt("photos    films    journal",11,760,38,"#aebbb3",{font:"Inter",ls:1,w:360,align:"right",z:5}),
     T.txt("otherworldly\niceland",62,200,288,"#f3f6f4",{font:"Playfair Display",fontWeight:400,italic:true,align:"center",lh:1.05,w:800,z:5,anim:{type:"fadeIn",duration:1,delay:0.2,easing:"ease-out",repeat:"once"}}),
     T.rect(590,470,20,2,"#aebbb3",{z:5}),
-    T.txt("Photos & films by Maya — eleven days chasing light across the highlands.",14,300,500,"#b8c4bd",{font:"Inter",align:"center",lh:1.6,w:600,z:5,anim:{type:"fadeIn",duration:0.9,delay:0.5,easing:"ease-out",repeat:"once"}}),
+    T.txt("Photos & films by Maya, eleven days chasing light across the highlands.",14,300,500,"#b8c4bd",{font:"Inter",align:"center",lh:1.6,w:600,z:5,anim:{type:"fadeIn",duration:0.9,delay:0.5,easing:"ease-out",repeat:"once"}}),
     {...T.btn("View the series",500,580,200,"transparent","#f3f6f4",0,"#3a4a42",1,50,13),anim:{type:"fadeIn",duration:0.7,delay:0.8,easing:"ease-out",repeat:"once"}} as ButtonElem,
   ]};
   const p2: Page = { id:uid(), label:"Gallery", bg:"#0a0a0a", h:900, elems:[
@@ -1748,7 +1748,7 @@ const wandererTemplate = (): CanvasDoc => {
     T.rect(72,90,420,500,"linear-gradient(160deg,#16382a,#0a120d)",{radius:8,z:2}),
     T.txt("BEHIND THE LENS",11,560,110,"#7fae97",{font:"Inter",fontWeight:600,ls:3,w:400,z:2}),
     T.txt("Chasing\nthe light.",54,560,138,"#f3f6f4",{font:"Playfair Display",fontWeight:400,italic:true,lh:1.05,w:560,z:2}),
-    T.txt("Maya is a landscape photographer and filmmaker based in Reykjavík, documenting the raw edges of the north — one expedition at a time.",16,560,308,"#9fb1a7",{font:"Inter",lh:1.7,w:520,z:2}),
+    T.txt("Maya is a landscape photographer and filmmaker based in Reykjavík, documenting the raw edges of the north, one expedition at a time.",16,560,308,"#9fb1a7",{font:"Inter",lh:1.7,w:520,z:2}),
     {...T.btn("Get in touch",560,440,200,"transparent","#f3f6f4",0,"#3a4a42",1,50,13)} as ButtonElem,
     T.txt("hello@wander.co",15,560,544,"#7fae97",{font:"Inter",w:300,z:2}),
   ]};
@@ -1764,7 +1764,7 @@ const fineArtTemplate = (): CanvasDoc => {
     T.rect(80,360,330,300,"linear-gradient(135deg,#e8c39e,#caa06f)",{radius:4,z:2,anim:{type:"fadeIn",duration:0.7,delay:0.3,easing:"ease-out",repeat:"once"}}),
     T.rect(435,360,330,300,"linear-gradient(140deg,#2a2a2a,#4a4a4a)",{radius:4,z:2,anim:{type:"fadeIn",duration:0.7,delay:0.4,easing:"ease-out",repeat:"once"}}),
     T.rect(790,360,330,300,"linear-gradient(135deg,#3f7fe0,#7db0f5)",{radius:4,z:2,anim:{type:"fadeIn",duration:0.7,delay:0.5,easing:"ease-out",repeat:"once"}}),
-    T.txt("Selected prints — limited editions, shipped worldwide.",13,360,690,"#6b6b73",{font:"Inter",align:"center",w:480,z:3}),
+    T.txt("Selected prints, limited editions, shipped worldwide.",13,360,690,"#6b6b73",{font:"Inter",align:"center",w:480,z:3}),
   ]};
   const p2: Page = { id:uid(), label:"Prints", bg:"#ffffff", h:880, elems:[
     T.txt("Prints",52,80,80,"#1a1a1a",{font:"Playfair Display",fontWeight:400,w:400,z:2}),
@@ -1887,7 +1887,7 @@ const spottedTemplate = (): CanvasDoc => {
   const p3: Page = { id:uid(), label:"About", bg:"#ffffff", h:700, elems:[
     T.txt("About",14,80,110,"#9a9aa3",{font:"Inter",ls:2,w:300,z:2}),
     T.txt("Soft moments,\nin watercolor.",48,80,138,"#1a1a1a",{font:"Playfair Display",fontWeight:400,lh:1.15,w:500,z:2}),
-    T.txt("Spotted is the studio of a watercolor artist capturing quiet, sophisticated moments in paint — commissions and prints available.",16,80,308,"#6b6b73",{font:"Inter",lh:1.7,w:480,z:2}),
+    T.txt("Spotted is the studio of a watercolor artist capturing quiet, sophisticated moments in paint, commissions and prints available.",16,80,308,"#6b6b73",{font:"Inter",lh:1.7,w:480,z:2}),
     {...T.btn("Commission a piece",80,430,220,"#1a1a1a","#ffffff",999,"none",0,50,13)} as ButtonElem,
     T.rect(640,90,480,520,"linear-gradient(120deg,#f6b8c8,#f7d34b)",{radius:8,z:2}),
   ]};
@@ -3142,7 +3142,7 @@ function LeftPanel({
 
           {cat==="templates" && (
             <>
-              {/* Built-in templates — 2-column grid with live preview */}
+              {/* Built-in templates – 2-column grid with live preview */}
               <div className="grid grid-cols-2 gap-1.5">
                 {builtinDocs.map(t => (
                   <button key={t.name} onClick={()=>onApplyTemplate(t.doc)}
@@ -3487,7 +3487,7 @@ function TopBar({
         className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-white hover:border-gray-300 hover:shadow-sm transition-all">
         <Share2 className="w-3.5 h-3.5"/> Share Template
       </button>
-      {/* Publish status — explicit so live vs. draft is never ambiguous. */}
+      {/* Publish status, explicit so live vs. draft is never ambiguous. */}
       <span className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[11px] font-semibold border ${
         isPublished
           ? "text-emerald-700 bg-emerald-50 border-emerald-200"
@@ -4101,7 +4101,7 @@ export default function PortfolioEditor() {
     const x0 = (e.clientX - rect.left) / z;
     const y0 = (e.clientY - rect.top)  / z;
 
-    // Show cover immediately via DOM — don't wait for React render cycle
+    // Show cover immediately via DOM, don't wait for React render cycle
     if (marqueeCoverRef.current) marqueeCoverRef.current.style.display = "block";
 
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -4220,7 +4220,7 @@ export default function PortfolioEditor() {
 
   return (
     <>
-    {/* Mobile / small-screen notice — the canvas editor needs room to work */}
+    {/* Mobile / small-screen notice, the canvas editor needs room to work */}
     <div className="lg:hidden fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center text-center px-8 gap-5">
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-sm"
         style={{background:"linear-gradient(135deg,#3b82f6,#6366f1)"}}>
@@ -4285,7 +4285,7 @@ export default function PortfolioEditor() {
           className="flex-1 overflow-auto bg-gray-200 flex flex-col items-center py-8 relative"
           onClick={()=>{ setSelectedIds([]); setEditingId(null); }}>
 
-          {/* Floating zoom controls — pinned top-right so they never overlap the
+          {/* Floating zoom controls, pinned top-right so they never overlap the
               centered page tabs (the page tabs stay clickable independently). */}
           <div
             onClick={e=>e.stopPropagation()}
@@ -4318,7 +4318,7 @@ export default function PortfolioEditor() {
                 Reset
               </button>
               <div style={{width:1,height:16,background:"rgba(255,255,255,0.15)",margin:"0 2px"}} />
-              <button onClick={()=>setFocusMode(v=>!v)} title="Focus mode — hide panels so the page is the only thing on screen"
+              <button onClick={()=>setFocusMode(v=>!v)} title="Focus mode, hide panels so the page is the only thing on screen"
                 style={{height:26,padding:"0 8px",display:"flex",alignItems:"center",justifyContent:"center",gap:5,
                   borderRadius:999,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,
                   background: focusMode ? "#c8e83c" : "transparent",
@@ -4563,7 +4563,7 @@ export default function PortfolioEditor() {
                   }}/>
                 )}
 
-                {/* Transparent cover during marquee — shown immediately via ref, not React state */}
+                {/* Transparent cover during marquee, shown immediately via ref, not React state */}
                 <div ref={marqueeCoverRef} style={{
                   display:"none",
                   position:"absolute", inset:0,

@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 // Deliberately EXCLUDED, because they are secrets or belong to other people:
 //   • passwordHash, and the `accounts`/`sessions` relations (OAuth + session tokens)
 //   • password-reset and email-verification tokens
-//   • full product rows on the wishlist (those are other creators' products —
+//   • full product rows on the wishlist (those are other creators' products –
 //     we only emit id/name/price so we never leak their digital file URLs etc.)
 export async function GET() {
   const session = await auth();
@@ -35,7 +35,7 @@ export async function GET() {
         createdAt: true,
         updatedAt: true,
 
-        // Content the user owns (safe — their own data)
+        // Content the user owns (safe, their own data)
         portfolio: true,
         store: true,
         products: true,
@@ -63,7 +63,7 @@ export async function GET() {
         teamStaff: true,
         staffMemberships: true,
 
-        // Limited — these reference products owned by other creators
+        // Limited, these reference products owned by other creators
         wishlist: { select: { id: true, name: true, price: true } },
       },
     });

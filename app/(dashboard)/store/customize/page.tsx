@@ -5,7 +5,7 @@ import {
   LayoutTemplate, Palette, Search, Settings2, X, Plus, Trash2,
   Save, Loader2, Check, Monitor, Shield, Zap, RefreshCw,
   ShoppingCart, SlidersHorizontal, ChevronDown, ChevronUp, Star, Upload, ImageIcon, Move,
-  Undo2, Redo2, Layers, Globe, Smartphone,
+  Undo2, Redo2, Layers, Globe, Smartphone, HelpCircle, Sparkles, ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { SectionsBuilder } from "./sections-builder";
@@ -53,7 +53,7 @@ function PanelSection({
 }: {
   title: string;
   children: React.ReactNode;
-  /** When true the section can be folded away — used for advanced/optional settings. */
+  /** When true the section can be folded away, used for advanced/optional settings. */
   collapsible?: boolean;
   defaultOpen?: boolean;
   /** Optional one-line description shown under the header for scannability. */
@@ -87,6 +87,92 @@ function PanelSection({
       </div>
     </div>
   );
+}
+
+// Mini mockup of each hero layout, matched to how it actually renders.
+// Gray gradient = the hero background photo; white bars = text over the photo;
+// dark bars = text on a white background; orange pill = CTA button.
+function HeroThumb({ id }: { id: string }) {
+  const wrap = "w-full h-16 rounded-md overflow-hidden border border-gray-200";
+  const photo = "bg-gradient-to-br from-slate-400 to-slate-300";
+
+  switch (id) {
+    case "showcase": // text + 2 buttons left, image card right, white bg
+      return (
+        <div className={`${wrap} bg-white flex items-center gap-1.5 p-2`}>
+          <div className="flex-1 flex flex-col gap-1">
+            <div className="h-2 w-3/4 rounded-full bg-gray-800" />
+            <div className="h-1 w-1/2 rounded-full bg-gray-300" />
+            <div className="flex gap-1 mt-0.5">
+              <div className="h-2 w-5 rounded-[2px] bg-orange-400" />
+              <div className="h-2 w-5 rounded-[2px] border border-gray-300" />
+            </div>
+          </div>
+          <div className={`${photo} w-2/5 self-stretch rounded-lg`} />
+        </div>
+      );
+    case "marquee": // full photo with one giant line of text across it
+      return (
+        <div className={`${wrap} ${photo} flex items-center justify-center p-1.5`}>
+          <div className="h-3.5 w-full rounded-[2px] bg-white/85" />
+        </div>
+      );
+    case "editorial": // centered headline + button, then a wide image below
+      return (
+        <div className={`${wrap} bg-white flex flex-col items-center gap-1 p-2`}>
+          <div className="h-2 w-1/2 rounded-full bg-gray-800" />
+          <div className="h-1.5 w-5 rounded-[2px] bg-orange-400" />
+          <div className={`${photo} w-full flex-1 rounded mt-0.5`} />
+        </div>
+      );
+    case "product": // full photo, left-aligned text + outlined button
+      return (
+        <div className={`${wrap} ${photo} flex flex-col items-start justify-center gap-1 p-2`}>
+          <div className="h-2 w-3/5 rounded-full bg-white/90" />
+          <div className="h-1 w-2/5 rounded-full bg-white/60" />
+          <div className="h-2.5 w-7 rounded-[2px] border border-white/85 mt-0.5" />
+        </div>
+      );
+    case "cover": // full photo, centered title + subtitle, no button
+      return (
+        <div className={`${wrap} ${photo} flex flex-col items-center justify-center gap-1 p-2`}>
+          <div className="h-2.5 w-2/5 rounded-full bg-white/90" />
+          <div className="h-1 w-1/4 rounded-full bg-white/60" />
+        </div>
+      );
+    case "centered": // full photo, centered logo + text
+      return (
+        <div className={`${wrap} ${photo} flex flex-col items-center justify-center gap-1 p-2`}>
+          <div className="w-3 h-3 rounded-full bg-white/85" />
+          <div className="h-1.5 w-2/5 rounded-full bg-white/90" />
+          <div className="h-1 w-1/4 rounded-full bg-white/60" />
+        </div>
+      );
+    case "split": // slim header, thin photo strip, logo + details on the left
+      return (
+        <div className={`${wrap} bg-white flex flex-col`}>
+          <div className={`${photo} h-1/3 w-full`} />
+          <div className="flex-1 flex items-center gap-1.5 px-2">
+            <div className="w-3 h-3 rounded-full bg-gray-300 flex-shrink-0" />
+            <div className="flex flex-col gap-1"><div className="h-1.5 w-10 rounded-full bg-gray-700" /><div className="h-1 w-7 rounded-full bg-gray-300" /></div>
+          </div>
+        </div>
+      );
+    case "minimal": // slim nav bar, then straight to a product grid
+      return (
+        <div className={`${wrap} bg-white flex flex-col p-2 gap-1.5`}>
+          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gray-300" /><div className="h-1 w-1/4 rounded-full bg-gray-300" /><div className="flex-1" /><div className="h-1 w-1/6 rounded-full bg-gray-300" /></div>
+          <div className="grid grid-cols-4 gap-1 flex-1">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="bg-gray-200 rounded-[2px]" />)}</div>
+        </div>
+      );
+    default: // storefront, full photo, centered headline + outlined button
+      return (
+        <div className={`${wrap} ${photo} flex flex-col items-center justify-center gap-1 p-2`}>
+          <div className="h-2 w-3/5 rounded-full bg-white/90" />
+          <div className="h-2.5 w-7 rounded-[2px] border border-white/85 mt-0.5" />
+        </div>
+      );
+  }
 }
 
 function ToggleRow({
@@ -318,6 +404,9 @@ export default function StoreCustomizePage() {
   const [heroSnapEnabled, setHeroSnapEnabled] = useState(true);
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [focusMode, setFocusMode] = useState(false); // hides section tabs + settings panel so the preview is the hero
+  // First-time "Get started" guide. Shown by default in the right panel until the
+  // user dismisses it; reopenable any time via the toolbar "Guide" button.
+  const [showGuide, setShowGuide] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -373,7 +462,7 @@ export default function StoreCustomizePage() {
     load();
   }, []);
 
-  // Persistent channel — creating a new channel and closing it right after
+  // Persistent channel, creating a new channel and closing it right after
   // postMessage can drop the message, so we keep one open for the session.
   const previewChannelRef = useRef<BroadcastChannel | null>(null);
   useEffect(() => {
@@ -388,7 +477,7 @@ export default function StoreCustomizePage() {
 
   const doSave = useCallback(async (s: StoreSettings) => {
     try {
-      // Auto-save writes to the DRAFT — changes don't go live until you Publish.
+      // Auto-save writes to the DRAFT, changes don't go live until you Publish.
       const res = await fetch("/api/store/draft", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -421,7 +510,7 @@ export default function StoreCustomizePage() {
     autoSaveTimer.current = setTimeout(() => doSave(latestSettings.current), 1200);
   }, [doSave]);
 
-  // Publish the draft — make the current edits live on the store.
+  // Publish the draft, make the current edits live on the store.
   const publish = useCallback(async () => {
     setPublishing(true);
     try {
@@ -442,7 +531,7 @@ export default function StoreCustomizePage() {
     }
   }, [doSave]);
 
-  // Discard the draft — revert the editor to the live (published) settings.
+  // Discard the draft, revert the editor to the live (published) settings.
   const discardDraft = useCallback(async () => {
     if (!confirm("Discard all unpublished changes and revert to the live store?")) return;
     setPublishing(true);
@@ -479,11 +568,11 @@ export default function StoreCustomizePage() {
         patchKeys.every(k => historyGroupKeys.current.has(k));
 
       if (isSameGroup) {
-        // Replace the latest entry — don't add a new undo step
+        // Replace the latest entry, don't add a new undo step
         historyStack.current[historyCursor.current] = next;
         clearTimeout(historyGroupTimer.current!);
       } else {
-        // New action — push a fresh history entry
+        // New action, push a fresh history entry
         const stack = historyStack.current.slice(0, historyCursor.current + 1);
         stack.push(next);
         if (stack.length > 50) stack.shift();
@@ -556,6 +645,19 @@ export default function StoreCustomizePage() {
     setActiveSection((prev) => (prev === s ? null : s));
   };
 
+  // Show the get-started guide to first-time users (until they dismiss it).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setShowGuide(localStorage.getItem("sellora:customizeGuideDismissed") !== "1");
+  }, []);
+  const dismissGuide = () => {
+    setShowGuide(false);
+    try { localStorage.setItem("sellora:customizeGuideDismissed", "1"); } catch {}
+  };
+  const openGuide = () => { setActiveSection(null); setShowGuide(true); };
+  // Open a section from the guide.
+  const goToFromGuide = (s: SectionId) => { setShowGuide(true); setActiveSection(s); };
+
   // Click-to-edit: the live preview iframe posts the section a shopper clicked;
   // open that panel (set, not toggle, so repeated clicks keep it open).
   useEffect(() => {
@@ -588,7 +690,7 @@ export default function StoreCustomizePage() {
   const renderPanel = (section: SectionId) => {
     if (section === "sections") {
       // Core sections that won't actually render on the live store (their
-      // feature is toggled off or empty) — the builder marks these "Hidden"
+      // feature is toggled off or empty), the builder marks these "Hidden"
       // so it never lists a section that doesn't appear on the page.
       const hiddenCores = new Set<string>();
       if (!(settings.showTrustBar ?? true) || settings.heroStyle === "minimal") hiddenCores.add("trustbar");
@@ -597,7 +699,7 @@ export default function StoreCustomizePage() {
       if (!settings.imageBannerEnabled) hiddenCores.add("imagebanner");
       if (!settings.showNewsletter) hiddenCores.add("newsletter");
 
-      // Custom pages — user-created, each rendered at /store/p/{slug}.
+      // Custom pages, user-created, each rendered at /store/p/{slug}.
       const customPages = settings.customPages ?? [];
       const updatePage = (id: string, patch: Partial<CustomPage>) =>
         update({ customPages: customPages.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
@@ -706,7 +808,7 @@ export default function StoreCustomizePage() {
               onChange={(v) => update({ showCurrencySwitcher: v })}
             />
             <p className="text-xs text-gray-500 mt-2">
-              Lets shoppers preview prices in their own currency. Amounts are converted using approximate rates for display only — charges are still made in {base}.
+              Lets shoppers preview prices in their own currency. Amounts are converted using approximate rates for display only, charges are still made in {base}.
             </p>
           </PanelSection>
           {(settings.showCurrencySwitcher ?? false) && (
@@ -735,7 +837,7 @@ export default function StoreCustomizePage() {
       return (
         <PanelSection title="Choose a Template">
           <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-            A template applies a full look — palette, fonts, hero layout &amp; grid. You can fine-tune everything afterwards.
+            A template applies a full look, palette, fonts, hero layout &amp; grid. You can fine-tune everything afterwards.
           </p>
           <div className="space-y-3">
             {STORE_TEMPLATES.map((t) => {
@@ -1084,14 +1186,15 @@ export default function StoreCustomizePage() {
                 <button
                   key={id}
                   onClick={() => update({ heroStyle: id })}
-                  className={`px-3 py-2 rounded-lg text-xs text-left border transition-all ${
+                  className={`p-2 rounded-lg text-xs text-left border transition-all ${
                     settings.heroStyle === id
-                      ? "border-blue-400 bg-blue-50 text-blue-600"
+                      ? "border-blue-400 bg-blue-50 text-blue-600 ring-1 ring-blue-400"
                       : "border-gray-200 bg-white text-gray-500 hover:border-gray-400"
                   }`}
                 >
-                  <div className="font-medium">{s.name}</div>
-                  <div className="text-gray-500 text-[10px] mt-0.5 line-clamp-2">{s.desc}</div>
+                  <HeroThumb id={id} />
+                  <div className="font-medium mt-1.5">{s.name}</div>
+                  <div className="text-gray-400 text-[10px] mt-0.5 line-clamp-1">{s.desc}</div>
                 </button>
               ))}
             </div>
@@ -1134,7 +1237,7 @@ export default function StoreCustomizePage() {
           </PanelSection>
           <PanelSection title="Hero Content">
             <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-              Add extra text lines and buttons to the hero — they appear beneath the headline.
+              Add extra text lines and buttons to the hero, they appear beneath the headline.
             </p>
             <div className="space-y-2">
               {heroItems.map((it, i) => (
@@ -1790,7 +1893,7 @@ export default function StoreCustomizePage() {
               placeholder="123456789012345"
               className={inputCls}
             />
-            <p className="text-xs text-gray-500 mt-2">Tracking fires on your live storefront only — never while you preview.</p>
+            <p className="text-xs text-gray-500 mt-2">Tracking fires on your live storefront only, never while you preview.</p>
           </PanelSection>
           <PanelSection title="Custom Code" collapsible defaultOpen={false} hint="Inject scripts or widgets. For advanced users.">
             <p className="text-xs text-gray-500 mb-2">
@@ -1811,7 +1914,7 @@ export default function StoreCustomizePage() {
               placeholder={`<!-- runs at end of <body> -->`}
               className={codeCls}
             />
-            <p className="text-[11px] text-amber-600 mt-2">⚠ Only paste code from sources you trust — it runs on your storefront.</p>
+            <p className="text-[11px] text-amber-600 mt-2">⚠ Only paste code from sources you trust, it runs on your storefront.</p>
           </PanelSection>
           <PanelSection title="Custom CSS" collapsible defaultOpen={false} hint="Override store styles with your own CSS.">
             <p className="text-xs text-gray-500 mb-3">
@@ -1840,14 +1943,22 @@ export default function StoreCustomizePage() {
     );
   }
 
-  const TOOLBAR: { id: SectionId; label: string; icon: React.ReactNode }[] = [
-    { id: "templates", label: "Templates", icon: <LayoutTemplate className="w-3.5 h-3.5" /> },
-    { id: "sections", label: "Sections", icon: <Layers className="w-3.5 h-3.5" /> },
-    { id: "productpage", label: "Product Page", icon: <ShoppingCart className="w-3.5 h-3.5" /> },
-    { id: "markets", label: "Markets", icon: <Globe className="w-3.5 h-3.5" /> },
-    { id: "theme", label: "Theme", icon: <Palette className="w-3.5 h-3.5" /> },
-    { id: "seo", label: "SEO", icon: <Search className="w-3.5 h-3.5" /> },
-    { id: "advanced", label: "Advanced", icon: <Settings2 className="w-3.5 h-3.5" /> },
+  const TOOLBAR: { id: SectionId; label: string; icon: React.ReactNode; desc: string }[] = [
+    { id: "templates", label: "Templates", icon: <LayoutTemplate className="w-3.5 h-3.5" />, desc: "Start from a ready-made store design" },
+    { id: "theme", label: "Theme", icon: <Palette className="w-3.5 h-3.5" />, desc: "Colors, fonts & button style" },
+    { id: "sections", label: "Sections", icon: <Layers className="w-3.5 h-3.5" />, desc: "Add, remove & reorder the blocks on each page" },
+    { id: "productpage", label: "Product Page", icon: <ShoppingCart className="w-3.5 h-3.5" />, desc: "How each product page looks" },
+    { id: "markets", label: "Markets", icon: <Globe className="w-3.5 h-3.5" />, desc: "Currency & where you sell" },
+    { id: "seo", label: "SEO", icon: <Search className="w-3.5 h-3.5" />, desc: "How your store appears on Google" },
+    { id: "advanced", label: "Advanced", icon: <Settings2 className="w-3.5 h-3.5" />, desc: "Custom code & extra options" },
+  ];
+
+  // The handful of steps a new store owner should do first, in order.
+  const GUIDE_STEPS: { n: number; icon: React.ReactNode; title: string; desc: string; section: SectionId }[] = [
+    { n: 1, icon: <LayoutTemplate className="w-4 h-4" />, title: "Pick a template", desc: "Choose a ready-made design as your starting point. You can change anything later.", section: "templates" },
+    { n: 2, icon: <Palette className="w-4 h-4" />, title: "Set your colors & fonts", desc: "Match your store to your brand with a theme, accent color and font.", section: "theme" },
+    { n: 3, icon: <ImageIcon className="w-4 h-4" />, title: "Add your logo & store name", desc: "Upload a logo and set your store name and tagline in the header.", section: "header" },
+    { n: 4, icon: <Layers className="w-4 h-4" />, title: "Arrange your page", desc: "Add, remove and reorder the sections shoppers see, like your hero and products.", section: "sections" },
   ];
 
   return (
@@ -1861,7 +1972,7 @@ export default function StoreCustomizePage() {
           <span className="text-sm font-medium text-gray-900 truncate max-w-[180px]">{storeName}</span>
         </div>
         <div className="flex items-center gap-2">
-          {/* Publish status — always visible so draft vs. live is impossible to miss. */}
+          {/* Publish status, always visible so draft vs. live is impossible to miss. */}
           {hasDraft ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" /> Draft · unpublished changes
@@ -1953,10 +2064,25 @@ export default function StoreCustomizePage() {
       <div className="flex flex-1 min-h-0">
         <div className="flex-1 min-w-0 flex flex-col">
           <div className="flex items-center gap-2 px-4 py-2.5 bg-white border-b border-gray-100 flex-shrink-0">
+            {!focusMode && (
+              <button
+                onClick={openGuide}
+                title="Open the get-started guide"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  showGuide && !activeSection
+                    ? "bg-[#2e9cfe] text-white border border-[#2e9cfe]"
+                    : "bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100"
+                }`}
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                Guide
+              </button>
+            )}
             {!focusMode && TOOLBAR.map((btn) => (
               <button
                 key={btn.id}
                 onClick={() => openSection(btn.id)}
+                title={btn.desc}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   activeSection === btn.id
                     ? "bg-blue-50 text-blue-600 border border-blue-200"
@@ -1971,7 +2097,7 @@ export default function StoreCustomizePage() {
             {!focusMode && <span className="text-xs text-gray-400 hidden xl:block mr-2">Click any section in the preview to edit</span>}
             <button
               onClick={() => setFocusMode((v) => !v)}
-              title="Focus mode — hide panels and preview your store full-width"
+              title="Focus mode, hide panels and preview your store full-width"
               className={`flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-xs font-semibold transition-all mr-1 ${
                 focusMode ? "bg-[#c8e83c] text-gray-900" : "bg-gray-50 text-gray-500 border border-gray-200 hover:text-gray-700"
               }`}
@@ -2024,7 +2150,7 @@ export default function StoreCustomizePage() {
             </div>
           )}
 
-          {/* Live preview — a real, in-preview render of the storefront (draft mode).
+          {/* Live preview, a real, in-preview render of the storefront (draft mode).
               It mirrors the live site 1:1 and updates instantly as you edit via the
               "nexus_store_preview" BroadcastChannel that the store listens to. */}
           <div className="flex-1 min-h-0 flex items-stretch justify-center p-6 bg-[#f0f4f8]">
@@ -2057,6 +2183,62 @@ export default function StoreCustomizePage() {
             </div>
           </div>
         </div>
+
+        {/* Get-started guide, shown for new users when no section is open. */}
+        {!activeSection && showGuide && !focusMode && (
+          <div className="w-[360px] flex-shrink-0 flex flex-col bg-white border-l border-gray-100">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
+              <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-[#2e9cfe]" /> Get started
+              </h2>
+              <button
+                onClick={dismissGuide}
+                title="Hide this guide"
+                className="text-gray-400 hover:text-gray-700 transition-colors p-1 rounded hover:bg-gray-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <p className="text-sm text-gray-500 leading-relaxed mb-4">
+                Set up your store in a few quick steps. Everything updates the preview on the left instantly, and nothing goes live until you hit <span className="font-semibold text-gray-700">Publish</span>.
+              </p>
+              <div className="space-y-2.5">
+                {GUIDE_STEPS.map((step) => (
+                  <button
+                    key={step.n}
+                    onClick={() => goToFromGuide(step.section)}
+                    className="group w-full flex items-start gap-3 p-3 rounded-xl border border-gray-200 bg-white text-left hover:border-[#2e9cfe] hover:bg-blue-50/40 transition-all"
+                  >
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-blue-50 text-[#2e9cfe] flex items-center justify-center text-xs font-bold">
+                      {step.n}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+                        {step.icon}{step.title}
+                      </span>
+                      <span className="block text-xs text-gray-500 mt-0.5 leading-snug">{step.desc}</span>
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#2e9cfe] flex-shrink-0 mt-0.5 transition-colors" />
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 rounded-xl bg-gray-50 border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  <span className="font-semibold text-gray-700">Tip:</span> You don't have to use every option. Pick a template, tweak the colors, and you're ready to go. Click any part of the preview to edit it directly.
+                </p>
+              </div>
+
+              <button
+                onClick={dismissGuide}
+                className="mt-4 w-full py-2 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 border border-gray-200 transition-all"
+              >
+                Got it, hide this guide
+              </button>
+            </div>
+          </div>
+        )}
 
         {activeSection && !focusMode && (
           <div className="w-[360px] flex-shrink-0 flex flex-col bg-white border-l border-gray-100">
@@ -2359,7 +2541,7 @@ function renderPreviewHero(
   const rightAlign  = { display: "flex", flexDirection: "column" as const, alignItems: "flex-end", textAlign: "right" as const, marginLeft: "auto" };
   const alignStyle  = textAlign === "center" ? centerAlign : textAlign === "right" ? rightAlign : leftAlign;
 
-  // Logo/avatar helper — mirrors the real store
+  // Logo/avatar helper, mirrors the real store
   const avatarEl = logo
     ? <img src={logo} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
     : userImage
@@ -2854,7 +3036,7 @@ function StorePreviewLive({
   );
 }
 
-// A small, faithful mock of how a template's storefront looks — palette, font,
+// A small, faithful mock of how a template's storefront looks, palette, font,
 // hero layout and a product grid, all derived from the template's settings.
 function TemplatePreview({ t }: { t: (typeof STORE_TEMPLATES)[number] }) {
   const s = t.settings;

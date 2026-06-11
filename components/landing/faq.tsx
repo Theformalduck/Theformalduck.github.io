@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils";
 const faqs = [
   {
     q: "What is Sellora?",
-    a: "Sellora is an all-in-one creator platform combining a portfolio builder, crowdfunding system, ecommerce store, and community tools — designed for creators, freelancers, and entrepreneurs who want to run their entire online business from one place.",
+    a: "Sellora is an all-in-one creator platform combining a portfolio builder, crowdfunding system, ecommerce store, and community tools, designed for creators, freelancers, and entrepreneurs who want to run their entire online business from one place.",
   },
   {
     q: "How is Sellora different from Kickstarter or Shopify?",
-    a: "Kickstarter only does crowdfunding. Shopify only does ecommerce. Sellora does both — plus your portfolio, community, analytics, and AI tools — all connected in one ecosystem. Your backers can become followers, your followers can buy from your store, and your store can fund your next campaign.",
+    a: "Kickstarter only does crowdfunding. Shopify only does ecommerce. Sellora does both, plus your portfolio, community, analytics, and AI tools, all connected in one ecosystem. Your backers can become followers, your followers can buy from your store, and your store can fund your next campaign.",
   },
   {
     q: "What are the transaction fees?",
@@ -20,7 +20,7 @@ const faqs = [
   },
   {
     q: "Can I use my own domain?",
-    a: "Yes. Pro and Business plans include custom domain support — connect any domain you own to your Sellora portfolio and store. Free plans get a free sellora.app/username subdomain.",
+    a: "Yes. Pro and Business plans include custom domain support, connect any domain you own to your Sellora portfolio and store. Free plans get a free sellora.app/username subdomain.",
   },
   {
     q: "How do campaign payouts work?",
@@ -28,7 +28,7 @@ const faqs = [
   },
   {
     q: "Can I sell both digital and physical products?",
-    a: "Absolutely. You can sell digital downloads (PDFs, courses, software, art), physical products with inventory tracking and shipping, and subscription memberships — all from the same store.",
+    a: "Absolutely. You can sell digital downloads (PDFs, courses, software, art), physical products with inventory tracking and shipping, and subscription memberships, all from the same store.",
   },
   {
     q: "Is there a limit on campaigns?",
@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     q: "Do you offer a free trial of Pro?",
-    a: "Yes — all new accounts get a 14-day full-access Pro trial with no credit card required. After 14 days, you'll be asked to upgrade or you'll automatically downgrade to the Free plan.",
+    a: "Yes, all new accounts get a 14-day full-access Pro trial with no credit card required. After 14 days, you'll be asked to upgrade or you'll automatically downgrade to the Free plan.",
   },
 ];
 

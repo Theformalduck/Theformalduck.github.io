@@ -60,7 +60,7 @@ export function StoreScripts({ ga, pixel, headCode, bodyCode, enabled = true }: 
   useEffect(() => {
     if (!enabled) return;
 
-    // Google Analytics 4 — only with analytics consent.
+    // Google Analytics 4, only with analytics consent.
     if (analytics && ga && /^G-[A-Z0-9]+$/i.test(ga)) {
       loadScript(`https://www.googletagmanager.com/gtag/js?id=${ga}`, "ga-lib");
       if (!document.querySelector('[data-sellora-inject="ga-init"]')) {
@@ -72,7 +72,7 @@ export function StoreScripts({ ga, pixel, headCode, bodyCode, enabled = true }: 
       }
     }
 
-    // Meta (Facebook) Pixel — only with marketing consent.
+    // Meta (Facebook) Pixel, only with marketing consent.
     if (marketing && pixel && /^\d+$/.test(pixel)) {
       if (!document.querySelector('[data-sellora-inject="meta-pixel"]')) {
         const fb = document.createElement("script");

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-// Delete a comment — allowed for its author or the campaign owner (moderation).
+// Delete a comment, allowed for its author or the campaign owner (moderation).
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string; commentId: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

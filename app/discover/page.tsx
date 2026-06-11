@@ -11,7 +11,7 @@ import { BadgeCheck, Store as StoreIcon, LayoutTemplate, Users, ArrowUpRight } f
 
 export const metadata: Metadata = {
   title: "Discover Creators",
-  description: "Browse creator portfolios and shops on Sellora — find designers, artists, developers, musicians and more.",
+  description: "Browse creator portfolios and shops on Sellora, find designers, artists, developers, musicians and more.",
 };
 
 function initials(name?: string | null, username?: string | null) {
@@ -20,7 +20,7 @@ function initials(name?: string | null, username?: string | null) {
 }
 
 export default async function DiscoverPage() {
-  // Fetch portfolios and shops in parallel — they're independent, so there's no
+  // Fetch portfolios and shops in parallel, they're independent, so there's no
   // reason to wait for one before starting the other.
   const [creators, shops] = await Promise.all([
     // Published creator portfolios
@@ -34,7 +34,7 @@ export default async function DiscoverPage() {
       orderBy: { updatedAt: "desc" },
       take: 24,
     }),
-    // Shops — users with at least one active product
+    // Shops, users with at least one active product
     db.user.findMany({
       where: { username: { not: null }, bannedAt: null, products: { some: { status: "ACTIVE" } } },
       select: {
@@ -97,7 +97,7 @@ export default async function DiscoverPage() {
             <div className="bg-white border border-dashed border-gray-200 rounded-2xl py-16 text-center">
               <LayoutTemplate className="w-8 h-8 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-900 font-semibold mb-1">No published portfolios yet</p>
-              <p className="text-gray-500 text-sm">Be the first — build and publish yours.</p>
+              <p className="text-gray-500 text-sm">Be the first, build and publish yours.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

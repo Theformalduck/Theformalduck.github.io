@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 
 // Scaled, non-interactive live preview of a page (used for portfolios that don't
-// use the canvas editor — we render the real public page in a clipped iframe).
+// use the canvas editor, we render the real public page in a clipped iframe).
 export function IframePreview({ src, height = 184, baseWidth = 1440 }: {
   src: string; height?: number; baseWidth?: number;
 }) {

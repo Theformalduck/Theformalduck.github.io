@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sanitizeField } from "@/lib/sanitize";
+import { moderateText } from "@/lib/moderation";
+import { notify } from "@/lib/notify";
 
 export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -34,6 +36,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
     return NextResponse.json({ error: "content is required" }, { status: 400 });
   }
 
+  const mod = moderateText(content);
+  if (!mod.ok) return NextResponse.json({ error: mod.reason }, { status: 422 });
+
   const post = await db.post.findUnique({ where: { id }, select: { id: true, userId: true } });
   if (!post) return NextResponse.json({ error: "Post not found" }, { status: 404 });
 
@@ -46,14 +51,13 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
 
   // Notify post author (not when commenting on your own post)
   if (post.userId !== session.user.id) {
-    await db.notification.create({
-      data: {
-        userId: post.userId,
-        type: "POST_COMMENT",
-        title: "New comment on your post",
-        body: content.length > 80 ? content.slice(0, 80) + "…" : content,
-        data: { postId: id, commentId: comment.id },
-      },
+    await notify({
+      userId: post.userId,
+      type: "POST_COMMENT",
+      title: "New comment on your post",
+      body: content.length > 80 ? content.slice(0, 80) + "…" : content,
+      data: { postId: id, commentId: comment.id },
+      link: "/community",
     });
   }
 

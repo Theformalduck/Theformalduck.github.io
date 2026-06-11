@@ -140,7 +140,7 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Sky gradient — landing hero */
+/* Sky gradient, landing hero */
 .sky-gradient {
   background: linear-gradient(
     180deg,
@@ -173,7 +173,7 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* Gradient text — use sparingly, max once per page */
+/* Gradient text, use sparingly, max once per page */
 .gradient-text {
   background: linear-gradient(135deg, #1571a0 0%, #29abe2 50%, #64c9ed 100%);
   -webkit-background-clip: text;
@@ -224,7 +224,7 @@ a {
   box-shadow: 0 0 28px rgba(200, 232, 60, 0.45), 0 0 56px rgba(200, 232, 60, 0.18);
 }
 
-/* Grid pattern — very subtle, barely visible */
+/* Grid pattern, very subtle, barely visible */
 .grid-pattern {
   background-image:
     linear-gradient(rgba(14, 165, 233, 0.04) 1px, transparent 1px),
@@ -304,7 +304,7 @@ html {
   display: none;
 }
 
-/* Respect users who prefer reduced motion — tone down CSS animations/transitions.
+/* Respect users who prefer reduced motion, tone down CSS animations/transitions.
    Intentional, content-driven marquees (.marquee-anim) are exempt: a creator who
    adds scrolling text means it to keep moving, and freezing it reads as broken. */
 @media (prefers-reduced-motion: reduce) {

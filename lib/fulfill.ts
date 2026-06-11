@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { sendEmailAfter, orderConfirmationEmail, lowStockEmail } from "@/lib/email";
+import { notify } from "@/lib/notify";
 
 export interface FulfillStoreParams {
   stripeSessionId: string;
@@ -7,7 +8,7 @@ export interface FulfillStoreParams {
   items: { productId: string; quantity: number }[];
   total: number;
   buyerId?: string | null;
-  buyerEmail?: string | null;   // payer email from Stripe — for guest resolution + confirmation
+  buyerEmail?: string | null;   // payer email from Stripe, for guest resolution + confirmation
   discountCode?: string | null;
   creatorUsername?: string | null;
 }
@@ -91,7 +92,7 @@ export async function fulfillStoreOrder(p: FulfillStoreParams): Promise<{ orderI
         data: {
           userId: product.userId, type: "LOW_STOCK",
           title: outOfStock ? "Product out of stock" : "Low stock alert",
-          body: outOfStock ? `"${product.name}" has sold out.` : `"${product.name}" is low — ${left} left in stock.`,
+          body: outOfStock ? `"${product.name}" has sold out.` : `"${product.name}" is low – ${left} left in stock.`,
           data: { productId: product.id, inventory: left },
         },
       });
@@ -118,13 +119,12 @@ export async function fulfillStoreOrder(p: FulfillStoreParams): Promise<{ orderI
   const sellerIds = [...new Set(products.map((pr) => pr.userId))];
   await Promise.all(
     sellerIds.map((sellerId) =>
-      db.notification.create({
-        data: {
-          userId: sellerId, type: "NEW_ORDER",
-          title: "New order received!",
-          body: `You received a $${p.total.toFixed(2)} order${guestEmail ? ` from ${guestEmail}` : ""}.`,
-          data: { orderId: order.id },
-        },
+      notify({
+        userId: sellerId, type: "NEW_ORDER",
+        title: "New order received!",
+        body: `You received a $${p.total.toFixed(2)} order${guestEmail ? ` from ${guestEmail}` : ""}.`,
+        data: { orderId: order.id },
+        link: "/store/orders",
       })
     )
   );
@@ -142,7 +142,7 @@ export async function fulfillStoreOrder(p: FulfillStoreParams): Promise<{ orderI
         .filter((d): d is { productName: string; fileUrl: string } => d !== null);
       sendEmailAfter({
         to: buyerEmail,
-        subject: `Order confirmed — ${storeName}`,
+        subject: `Order confirmed – ${storeName}`,
         html: orderConfirmationEmail({
           id: order.id, total: p.total, storeName, storeUsername,
           downloads: downloads.length ? downloads : undefined,
@@ -155,7 +155,7 @@ export async function fulfillStoreOrder(p: FulfillStoreParams): Promise<{ orderI
   return { orderId: order.id, created: true };
 }
 
-// Crowdfunding pledge fulfillment — create the backer, bump raised/claimed, notify.
+// Crowdfunding pledge fulfillment, create the backer, bump raised/claimed, notify.
 // Idempotent on paypalOrderId.
 export async function fulfillCampaignBacking(p: {
   stripeSessionId: string;
@@ -174,7 +174,7 @@ export async function fulfillCampaignBacking(p: {
       data: { userId: p.buyerId, campaignId: p.campaignId, rewardId: p.rewardId || null, amount: p.amount, stripePaymentId: p.stripeSessionId, status: "completed" },
     });
   } catch (e: any) {
-    // Concurrent fulfillment of the same pledge — return the existing one.
+    // Concurrent fulfillment of the same pledge, return the existing one.
     if (e?.code === "P2002") {
       const dup = await db.backer.findFirst({ where: { stripePaymentId: p.stripeSessionId } });
       if (dup) return { backerId: dup.id, created: false };
@@ -186,8 +186,12 @@ export async function fulfillCampaignBacking(p: {
 
   const campaign = await db.campaign.findUnique({ where: { id: p.campaignId }, select: { userId: true, title: true } });
   if (campaign) {
-    await db.notification.create({
-      data: { userId: campaign.userId, type: "NEW_BACKER", title: "New campaign backer!", body: `Someone backed "${campaign.title}" with $${p.amount.toFixed(2)}.`, data: { campaignId: p.campaignId } },
+    await notify({
+      userId: campaign.userId, type: "NEW_BACKER",
+      title: "New campaign backer!",
+      body: `Someone backed "${campaign.title}" with $${p.amount.toFixed(2)}.`,
+      data: { campaignId: p.campaignId },
+      link: "/campaigns",
     });
   }
   return { backerId: backer.id, created: true };

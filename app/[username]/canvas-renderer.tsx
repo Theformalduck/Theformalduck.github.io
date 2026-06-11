@@ -54,7 +54,7 @@ function ElemView({ el }: { el: Elem }) {
   const anim = el.anim;
   const hasAnim = anim && anim.type !== "none";
 
-  // Outer div: absolute position + z-index + animation (no rotation — avoids transform conflict)
+  // Outer div: absolute position + z-index + animation (no rotation, avoids transform conflict)
   const outer: React.CSSProperties = {
     position: "absolute",
     left: el.x, top: el.y, width: el.w, height: el.h,
@@ -279,12 +279,12 @@ export function CanvasRenderer({ doc }: { doc: CanvasDoc }) {
 
   useEffect(() => {
     const update = () => {
-      // Measure the TRUE viewport width (document.documentElement.clientWidth) — NOT a
+      // Measure the TRUE viewport width (document.documentElement.clientWidth) – NOT a
       // child container, whose width would itself be inflated by the canvas overflowing,
       // creating a feedback loop that never shrinks the canvas to fit.
       const vw = document.documentElement.clientWidth || window.innerWidth;
       // Design canvas is 1920 wide. Scale DOWN to fit narrower screens, but never
-      // scale UP past 1× — so text/buttons are never enlarged beyond their native size.
+      // scale UP past 1×, so text/buttons are never enlarged beyond their native size.
       if (vw > 0) setScale(Math.min(1, vw / CANVAS_W));
     };
     update();
@@ -305,7 +305,7 @@ export function CanvasRenderer({ doc }: { doc: CanvasDoc }) {
           display: "flex",
           justifyContent: "center",
         }}>
-          {/* Clip box is exactly the scaled canvas size — off-canvas decorations are clipped
+          {/* Clip box is exactly the scaled canvas size, off-canvas decorations are clipped
               at the 1440 edge, identical to the editor artboard. */}
           <div style={{
             position: "relative",
@@ -333,7 +333,7 @@ export function CanvasRenderer({ doc }: { doc: CanvasDoc }) {
 
 // ── Static thumbnail of a canvas portfolio's first page ───────────────────────
 // Renders the real elements scaled to fit the container width, clipped to a fixed
-// height — used for previews on the Discover page. Animations are stripped so the
+// height, used for previews on the Discover page. Animations are stripped so the
 // preview is a clean, final-state still.
 export function CanvasThumbnail({ doc, height = 160 }: { doc: CanvasDoc; height?: number }) {
   const ref = useRef<HTMLDivElement>(null);

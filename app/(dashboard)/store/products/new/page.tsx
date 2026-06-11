@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Plus, X } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, X, Image as ImageIcon } from "lucide-react";
 import { MediaUpload } from "@/components/ui/media-upload";
 import { VariantImage } from "@/components/ui/variant-image";
 
@@ -98,8 +98,10 @@ export default function NewProductPage() {
     }
   };
 
+  const typeLabel = productTypes.find(t => t.value === form.type)?.label;
+
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
         <Link href="/store">
           <button className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-all">
@@ -112,7 +114,8 @@ export default function NewProductPage() {
         </div>
       </div>
 
-      <div className="space-y-5">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+        <div className="space-y-5">
         {/* Type selector */}
         <div className="bg-white border border-gray-200 rounded-2xl p-6">
           <h2 className="text-gray-900 font-semibold mb-4">Product Type</h2>
@@ -308,6 +311,33 @@ export default function NewProductPage() {
             </Button>
           </div>
         </div>
+        </div>
+
+        {/* Live preview — fills the space on wide screens and shows how the
+            product card will look in the store as you fill in the form. */}
+        <aside className="hidden lg:block sticky top-6 space-y-3">
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Live preview</div>
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="aspect-[4/3] bg-gray-50 flex items-center justify-center overflow-hidden">
+              {form.coverImage
+                ? <img src={form.coverImage} alt="" className="w-full h-full object-cover" />
+                : <div className="flex flex-col items-center text-gray-300"><ImageIcon className="w-8 h-8 mb-1" /><span className="text-xs">Product image</span></div>}
+            </div>
+            <div className="p-4">
+              <span className="inline-block text-[11px] font-medium text-[#2e9cfe] bg-nexus-50 px-2 py-0.5 rounded-full mb-2">{typeLabel}</span>
+              <h3 className="font-semibold text-gray-900 text-sm truncate">{form.name || "Product name"}</h3>
+              <p className="text-gray-500 text-xs mt-1 line-clamp-3">{form.description || "Your product description will appear here."}</p>
+              <div className="flex items-baseline gap-2 mt-3">
+                <span className="text-lg font-bold text-gray-900">${form.price ? Number(form.price).toFixed(2) : "0.00"}</span>
+                {form.comparePrice && Number(form.comparePrice) > Number(form.price || 0) && (
+                  <span className="text-sm text-gray-400 line-through">${Number(form.comparePrice).toFixed(2)}</span>
+                )}
+                {form.type === "SUBSCRIPTION" && <span className="text-xs text-gray-400">/{form.billingInterval}</span>}
+              </div>
+            </div>
+          </div>
+          <p className="text-[11px] text-gray-400 text-center">How your product card will look in your store.</p>
+        </aside>
       </div>
     </div>
   );

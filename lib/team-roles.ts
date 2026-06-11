@@ -27,7 +27,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 export const ROLE_DESCRIPTIONS: Record<string, string> = {
   ADMIN: "Full access except transferring ownership",
-  MANAGER: "Products, orders, store design, discounts & analytics — no team or billing",
+  MANAGER: "Products, orders, store design, discounts & analytics, no team or billing",
   STAFF: "View and fulfill orders only",
 };
 

@@ -26,7 +26,7 @@ export default function CookiesPage() {
       <h2>2. How we use cookies</h2>
       <ul>
         <li>
-          <strong>Strictly necessary:</strong> required to run the Service — for example, keeping you
+          <strong>Strictly necessary:</strong> required to run the Service, for example, keeping you
           securely signed in (authentication/session cookies) and protecting against fraud. The Service
           cannot function properly without these.
         </li>
@@ -42,7 +42,7 @@ export default function CookiesPage() {
 
       <h2>3. Third-party cookies</h2>
       <p>
-        Some features rely on third parties that may set their own cookies — for example, our payment
+        Some features rely on third parties that may set their own cookies, for example, our payment
         processor (Stripe) during checkout, and our infrastructure and analytics providers. Their use of
         cookies is governed by their own policies.
       </p>

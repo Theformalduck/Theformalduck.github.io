@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { moderateText } from "@/lib/moderation";
 
 export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
@@ -24,6 +25,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   if (!rating || rating < 1 || rating > 5) {
     return NextResponse.json({ error: "Rating must be between 1 and 5" }, { status: 400 });
   }
+
+  const mod = moderateText(typeof comment === "string" ? comment : "");
+  if (!mod.ok) return NextResponse.json({ error: mod.reason }, { status: 422 });
 
   const product = await db.product.findUnique({ where: { id }, select: { id: true } });
   if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 });

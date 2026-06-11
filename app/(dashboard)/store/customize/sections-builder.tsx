@@ -208,7 +208,7 @@ function SortableRow({
           <button {...attributes} {...listeners} className="p-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing" title="Drag to reorder">
             <GripVertical className="w-4 h-4" />
           </button>
-          <button onClick={() => onEditCore?.(meta?.panel ?? "")} className="flex-1 flex items-center gap-2 min-w-0 text-left" title={hidden ? "Hidden on your store — click to enable" : "Configure in its panel"}>
+          <button onClick={() => onEditCore?.(meta?.panel ?? "")} className="flex-1 flex items-center gap-2 min-w-0 text-left" title={hidden ? "Hidden on your store, click to enable" : "Configure in its panel"}>
             <Icon className={`w-4 h-4 flex-shrink-0 ${hidden ? "text-gray-300" : "text-gray-400"}`} />
             <div className="min-w-0">
               <div className="text-[10px] uppercase tracking-wide font-semibold">
@@ -600,6 +600,6 @@ function BlockFields({ block, onPatch }: { block: Block; onPatch: (p: Partial<Bl
     case "spacer":
       return <Seg label="Height" value={b.size} options={[{ value: "sm", label: "Small" }, { value: "md", label: "Medium" }, { value: "lg", label: "Large" }]} onChange={(v) => onPatch({ size: v as "sm" | "md" | "lg" })} />;
     case "divider":
-      return <p className="text-xs text-gray-400">A horizontal divider line — no options.</p>;
+      return <p className="text-xs text-gray-400">A horizontal divider line, no options.</p>;
   }
 }

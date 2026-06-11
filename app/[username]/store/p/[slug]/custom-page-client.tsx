@@ -7,7 +7,7 @@ type Theme = { bg: string; surface: string; surfaceHover: string; border: string
 type Product = { id: string; name: string; price: number; images: string[] };
 
 // Thin client wrapper so the section renderer gets a (non-serializable) currency
-// formatter. Custom pages are content/showcase pages — product cards link to the
+// formatter. Custom pages are content/showcase pages, product cards link to the
 // product page rather than carrying the full cart UI.
 export function CustomPageClient({ sections, theme, accent, accentText, products, username, btnRadius, currency }: {
   sections: StoreSection[];

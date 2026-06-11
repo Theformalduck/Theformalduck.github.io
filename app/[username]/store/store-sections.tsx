@@ -34,7 +34,7 @@ export function StoreSections({ sections, theme, accent, accentText, products, u
 }
 
 function SectionBlock({ s, theme, accent, accentText, products, username, formatCurrency, onAddToCart, btnRadius }: { s: StoreSection } & Omit<Props, "sections">) {
-  // Per-section design — width, vertical padding & background, with per-type
+  // Per-section design, width, vertical padding & background, with per-type
   // natural defaults so unconfigured sections look exactly as before.
   const nat = SECTION_NATURAL[s.type];
   const WIDTHS = { narrow: "max-w-2xl", normal: "max-w-6xl", wide: "max-w-7xl", full: "max-w-full" } as const;
@@ -288,7 +288,7 @@ function BlockView({ b, theme, accent, accentText, btnRadius = "rounded-lg" }: {
     // viewport width, edge to edge.
     const bleed: React.CSSProperties = { width: "100vw", maxWidth: "100vw", marginLeft: "calc(50% - 50vw)" };
 
-    // Curved arc variant — text follows a gentle SVG path, scrolling along it.
+    // Curved arc variant, text follows a gentle SVG path, scrolling along it.
     if (b.curved) {
       const pathId = `mq-${b.id}`;
       const vbFont = b.size === "md" ? 56 : b.size === "xl" ? 116 : 86;
@@ -309,7 +309,7 @@ function BlockView({ b, theme, accent, accentText, btnRadius = "rounded-lg" }: {
       );
     }
 
-    // Straight ticker — duplicated runs translate seamlessly via the keyframe.
+    // Straight ticker, duplicated runs translate seamlessly via the keyframe.
     return (
       <div className="overflow-hidden" style={{ ...bleed, maskImage: fade, WebkitMaskImage: fade }} aria-label={text}>
         <div className="marquee-anim flex w-max whitespace-nowrap" style={{ animation: `store-marquee ${dur}s linear infinite${reverse ? " reverse" : ""}` }}>

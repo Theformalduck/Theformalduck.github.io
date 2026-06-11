@@ -9,7 +9,7 @@ const steps = [
     icon: UserPlus,
     title: "Create your profile",
     description:
-      "Sign up in under a minute. Tell us about your work, pick your role, and your Sellora profile becomes your professional home base — instantly.",
+      "Sign up in under a minute. Tell us about your work, pick your role, and your Sellora profile becomes your professional home base, instantly.",
   },
   {
     num: "02",
@@ -23,7 +23,7 @@ const steps = [
     icon: TrendingUp,
     title: "Grow and earn",
     description:
-      "Watch your audience grow, campaigns fund, and orders arrive. Track it all in real-time — with AI insights that tell you what's actually working.",
+      "Watch your audience grow, campaigns fund, and orders arrive. Track it all in real-time, with AI insights that tell you what's actually working.",
   },
 ];
 

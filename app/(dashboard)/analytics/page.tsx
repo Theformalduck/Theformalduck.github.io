@@ -6,7 +6,6 @@ import {
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Cell,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 
@@ -19,8 +18,9 @@ type DayRevenue = { date: string; revenue: number; orders: number };
 type TopProduct = { name: string; type: string; revenue: number; units: number };
 type TypeRevenue = { type: string; revenue: number };
 
+// Single-hue brand-blue scale, professional and on-brand (not rainbow).
 const TYPE_COLORS: Record<string, string> = {
-  DIGITAL: "#6366f1", PHYSICAL: "#10b981", SERVICE: "#f59e0b", SUBSCRIPTION: "#06b6d4",
+  PHYSICAL: "#2e9cfe", DIGITAL: "#1577cc", SERVICE: "#6cb8f7", SUBSCRIPTION: "#0a4d80",
 };
 
 export default function AnalyticsPage() {
@@ -35,14 +35,14 @@ export default function AnalyticsPage() {
       .then(r => (r.ok ? r.json() : null))
       .then(data => {
         // Tolerate error/empty responses (401 on a session blip, 500, etc.) so
-        // the page never crashes — fall back to safe, well-typed defaults.
+        // the page never crashes, fall back to safe, well-typed defaults.
         if (!data) return;
         setStats(data.stats ?? null);
         setDaily(Array.isArray(data.dailyRevenue) ? data.dailyRevenue : []);
         setTopProducts(Array.isArray(data.topProducts) ? data.topProducts : []);
         setByType(Array.isArray(data.revenueByType) ? data.revenueByType : []);
       })
-      .catch(() => { /* network error — keep defaults, page still renders */ })
+      .catch(() => { /* network error, keep defaults, page still renders */ })
       .finally(() => setLoading(false));
   }, []);
 
@@ -108,7 +108,7 @@ export default function AnalyticsPage() {
 
       {/* 30-day revenue chart */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
-        <h3 className="text-gray-900 font-semibold mb-1">Revenue — Last 30 Days</h3>
+        <h3 className="text-gray-900 font-semibold mb-1">Revenue – Last 30 Days</h3>
         <p className="text-gray-400 text-xs mb-5">Daily revenue from completed orders</p>
         {daily.every(d => d.revenue === 0) ? (
           <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
@@ -119,8 +119,8 @@ export default function AnalyticsPage() {
             <AreaChart data={daily}>
               <defs>
                 <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#2e9cfe" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#2e9cfe" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={tickFormatter} />
@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
                 formatter={(val: any) => [formatCurrency(Number(val)), "Revenue"]}
                 contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", fontSize: "12px" }}
               />
-              <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} fill="url(#gRev)" />
+              <Area type="monotone" dataKey="revenue" stroke="#2e9cfe" strokeWidth={2} fill="url(#gRev)" />
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -142,24 +142,24 @@ export default function AnalyticsPage() {
           {topProducts.length === 0 ? (
             <p className="text-gray-400 text-sm">No sales recorded yet</p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {topProducts.map((p, i) => {
                 const maxRev = topProducts[0]?.revenue ?? 1;
+                const color = TYPE_COLORS[p.type] ?? "#6366f1";
                 return (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="text-gray-400 text-xs w-4 flex-shrink-0">{i + 1}</span>
+                    <span className="flex-shrink-0 w-6 h-6 rounded-lg bg-gray-100 text-gray-500 text-xs font-bold flex items-center justify-center">{i + 1}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
-                      <div className="mt-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ width: `${(p.revenue / maxRev) * 100}%`, background: TYPE_COLORS[p.type] ?? "#6366f1" }}
-                        />
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                        <p className="text-sm font-semibold text-gray-900 flex-shrink-0">{formatCurrency(p.revenue)}</p>
                       </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(p.revenue)}</p>
-                      <p className="text-xs text-gray-400">{p.units} sold</p>
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                          <div className="h-full rounded-full transition-all" style={{ width: `${(p.revenue / maxRev) * 100}%`, background: color }} />
+                        </div>
+                        <span className="text-[11px] text-gray-400 flex-shrink-0">{p.units} sold</span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -174,33 +174,37 @@ export default function AnalyticsPage() {
           {byType.length === 0 ? (
             <p className="text-gray-400 text-sm">No sales recorded yet</p>
           ) : (
-            <>
-              <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={byType} barSize={32}>
-                  <XAxis dataKey="type" tick={{ fill: "#9ca3af", fontSize: 10 }} axisLine={false} tickLine={false}
-                    tickFormatter={t => t.charAt(0) + t.slice(1).toLowerCase()} />
-                  <YAxis hide />
-                  <Tooltip
-                    formatter={(val: any) => [formatCurrency(Number(val)), "Revenue"]}
-                    contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", fontSize: "12px" }}
-                    labelFormatter={(t: any) => String(t).charAt(0) + String(t).slice(1).toLowerCase()}
-                  />
-                  <Bar dataKey="revenue" radius={[6, 6, 0, 0]}>
-                    {byType.map((entry, i) => (
-                      <Cell key={i} fill={TYPE_COLORS[entry.type] ?? "#6366f1"} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <div className="flex flex-wrap gap-3 mt-3">
-                {byType.map(({ type, revenue }) => (
-                  <div key={type} className="flex items-center gap-1.5 text-xs text-gray-600">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: TYPE_COLORS[type] ?? "#6366f1" }} />
-                    {type.charAt(0) + type.slice(1).toLowerCase()} · {formatCurrency(revenue)}
-                  </div>
-                ))}
-              </div>
-            </>
+            (() => {
+              const total = byType.reduce((s, t) => s + t.revenue, 0) || 1;
+              const sorted = [...byType].sort((a, b) => b.revenue - a.revenue);
+              const max = sorted[0]?.revenue || 1;
+              return (
+                <div className="space-y-4">
+                  {sorted.map(({ type, revenue }) => {
+                    const color = TYPE_COLORS[type] ?? "#6366f1";
+                    const label = type.charAt(0) + type.slice(1).toLowerCase();
+                    const pct = Math.round((revenue / total) * 100);
+                    return (
+                      <div key={type}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                            {label}
+                          </span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {formatCurrency(revenue)}
+                            <span className="text-gray-400 font-normal text-xs ml-1.5">{pct}%</span>
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                          <div className="h-full rounded-full transition-all" style={{ width: `${(revenue / max) * 100}%`, background: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
           )}
         </div>
       </div>

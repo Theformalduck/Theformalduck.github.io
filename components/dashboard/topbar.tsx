@@ -133,7 +133,7 @@ export function Topbar({ title, onMenuOpen }: TopbarProps) {
     <header className="h-[68px] flex items-center justify-between px-4 md:px-6 border-b border-gray-100 bg-white flex-shrink-0 sticky top-0 z-20">
       {/* Left: hamburger (mobile) + search */}
       <div className="flex items-center gap-2 md:gap-3">
-        {/* Hamburger — mobile only */}
+        {/* Hamburger, mobile only */}
         <button
           onClick={onMenuOpen}
           className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-all"

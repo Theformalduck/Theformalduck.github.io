@@ -66,7 +66,7 @@ export function Hero() {
           style={{ color: "rgba(255,255,255,0.82)" }}
         >
           Sellora gives creators one storefront to showcase their work, sell digital
-          &amp; physical products, run crowdfunding campaigns, and grow an audience —
+          &amp; physical products, run crowdfunding campaigns, and grow an audience,
           no code, no plugins, no juggling five different tools.
         </motion.p>
 
@@ -106,7 +106,7 @@ export function Hero() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 28px rgba(200,232,60,0.5), 0 2px 6px rgba(0,0,0,0.12)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = ""; (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 20px rgba(200,232,60,0.45), 0 1px 3px rgba(0,0,0,0.1)"; }}
                 >
-                  Build your page — free
+                  Build your page, free
                   <ArrowRight className="w-4 h-4" />
                 </span>
               </Link>
@@ -128,7 +128,7 @@ export function Hero() {
           )}
         </motion.div>
 
-        {/* Social proof — logos row */}
+        {/* Social proof, logos row */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -160,7 +160,7 @@ export function Hero() {
         className="relative z-10 w-full max-w-6xl mx-auto px-4 mt-16 flex items-end justify-center gap-4"
         style={{ perspective: "1400px" }}
       >
-        {/* Card — analytics */}
+        {/* Card, analytics */}
         <motion.div
           animate={{ y: [0, -9, 0] }}
           transition={{ duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 0 }}
@@ -189,7 +189,7 @@ export function Hero() {
           </div>
         </motion.div>
 
-        {/* Card — smart growth */}
+        {/* Card, smart growth */}
         <motion.div
           animate={{ y: [0, -13, 0] }}
           transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
@@ -223,7 +223,7 @@ export function Hero() {
           </div>
         </motion.div>
 
-        {/* Center card — most prominent */}
+        {/* Center card, most prominent */}
         <motion.div
           animate={{ y: [0, -16, 0] }}
           transition={{ duration: 5.6, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
@@ -262,7 +262,7 @@ export function Hero() {
           </div>
         </motion.div>
 
-        {/* Card — ai powered */}
+        {/* Card, ai powered */}
         <motion.div
           animate={{ y: [0, -11, 0] }}
           transition={{ duration: 4.9, repeat: Infinity, ease: "easeInOut", delay: 0.9 }}
@@ -293,7 +293,7 @@ export function Hero() {
           </div>
         </motion.div>
 
-        {/* Card — analytics chart */}
+        {/* Card, analytics chart */}
         <motion.div
           animate={{ y: [0, -8, 0] }}
           transition={{ duration: 5.4, repeat: Infinity, ease: "easeInOut", delay: 1.1 }}

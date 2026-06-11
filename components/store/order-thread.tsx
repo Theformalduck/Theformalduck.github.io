@@ -83,7 +83,7 @@ export function OrderThread({ orderId, accent = "#2e9cfe" }: { orderId: string; 
         <input value={body} onChange={e => { setBody(e.target.value); setError(null); }}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
           placeholder="Type a message…"
-          className="flex-1 h-9 px-3 rounded-lg bg-white border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-nexus-500" />
+          className="flex-1 h-9 px-3 rounded-lg bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-nexus-500" />
         <button onClick={send} disabled={sending || !body.trim()}
           className="w-9 h-9 rounded-lg flex items-center justify-center text-white disabled:opacity-50 flex-shrink-0"
           style={{ background: accent }}>

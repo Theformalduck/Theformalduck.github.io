@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 // Onboarding is for brand-new accounts only. A user who already has a username
 // has finished setup, so logging in (incl. via a social button that points here)
-// should never force them to "set up" again — send them to the dashboard.
+// should never force them to "set up" again, send them to the dashboard.
 export default async function OnboardingPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login?callbackUrl=/onboarding");

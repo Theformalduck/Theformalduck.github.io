@@ -83,7 +83,7 @@ function SidebarContent({
         collapsed ? "w-[68px]" : "w-[228px]"
       )}
     >
-      {/* Logo — only the mark + name link back to the home page */}
+      {/* Logo, only the mark + name link back to the home page */}
       <div className={cn(
         "flex items-center h-[68px] border-b border-gray-100 px-5",
         collapsed && "justify-center px-0"
@@ -218,7 +218,7 @@ function SidebarContent({
         </div>
       )}
 
-      {/* Collapse toggle — desktop only */}
+      {/* Collapse toggle, desktop only */}
       <button
         onClick={() => setCollapsed(!collapsed)}
         className="absolute -right-3 top-[82px] w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-all z-10 shadow-sm hidden md:flex"

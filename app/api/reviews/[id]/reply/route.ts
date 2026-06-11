@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sanitizeField } from "@/lib/sanitize";
+import { moderateText } from "@/lib/moderation";
+import { notify } from "@/lib/notify";
 
 // The store owner posts (or clears) a public reply to a review on their product.
 export async function PUT(req: NextRequest, props: { params: Promise<{ id: string }> }) {
@@ -19,6 +21,9 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
   const body = await req.json();
   const reply = sanitizeField(body.reply, 2000).trim();
 
+  const mod = moderateText(reply);
+  if (!mod.ok) return NextResponse.json({ error: mod.reason }, { status: 422 });
+
   const updated = await db.review.update({
     where: { id },
     data: {
@@ -31,14 +36,13 @@ export async function PUT(req: NextRequest, props: { params: Promise<{ id: strin
   // Notify the reviewer that the seller responded.
   if (reply && review.authorId !== session.user.id) {
     try {
-      await db.notification.create({
-        data: {
-          userId: review.authorId,
-          type: "REVIEW_REPLY",
-          title: "The seller replied to your review",
-          body: `Your review of "${review.product.name}" got a response.`,
-          data: { productId: (await db.review.findUnique({ where: { id }, select: { productId: true } }))?.productId ?? null },
-        },
+      await notify({
+        userId: review.authorId,
+        type: "REVIEW_REPLY",
+        title: "The seller replied to your review",
+        body: `Your review of "${review.product.name}" got a response.`,
+        data: { productId: (await db.review.findUnique({ where: { id }, select: { productId: true } }))?.productId ?? undefined },
+        link: "/orders",
       });
     } catch (e) { console.error("[review reply] notify failed:", e); }
   }

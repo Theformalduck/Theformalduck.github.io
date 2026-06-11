@@ -107,7 +107,7 @@ export default function AdminCampaignsPage() {
                       <p className="text-gray-400 text-xs font-mono">{c.id.slice(-8)}</p>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
-                      <p className="text-gray-900">{c.user.name ?? "—"}</p>
+                      <p className="text-gray-900">{c.user.name ?? "–"}</p>
                       <p className="text-gray-400 text-xs">{c.user.email}</p>
                     </td>
                     <td className="px-4 py-3">

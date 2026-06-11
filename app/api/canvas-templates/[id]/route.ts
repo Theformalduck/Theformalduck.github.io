@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-// GET /api/canvas-templates/[id] — fetch full template (with canvasData)
+// GET /api/canvas-templates/[id], fetch full template (with canvasData)
 export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
 
@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
   return NextResponse.json(template);
 }
 
-// DELETE /api/canvas-templates/[id] — remove own template
+// DELETE /api/canvas-templates/[id], remove own template
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const session = await auth();

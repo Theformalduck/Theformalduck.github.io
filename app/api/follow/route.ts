@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { notify } from "@/lib/notify";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -35,14 +36,13 @@ export async function POST(req: NextRequest) {
 
   await Promise.all([
     db.follow.create({ data: { followerId: session.user.id, followingId: targetUserId } }),
-    db.notification.create({
-      data: {
-        userId: targetUserId,
-        type: "NEW_FOLLOWER",
-        title: "You have a new follower!",
-        body: `Someone started following you.`,
-        data: { followerId: session.user.id },
-      },
+    notify({
+      userId: targetUserId,
+      type: "NEW_FOLLOWER",
+      title: "You have a new follower!",
+      body: `${session.user.name ?? "Someone"} started following you.`,
+      data: { followerId: session.user.id },
+      link: "/community",
     }),
   ]);
 

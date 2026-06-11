@@ -172,7 +172,7 @@ export default function OnboardingClient({ initialUsername = "" }: { initialUser
                 <Sparkles className="w-6 h-6 text-amber-400" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-1">What are your goals?</h2>
-              <p className="text-gray-500 text-sm mb-6">Select all that apply  —  you can change this later.</p>
+              <p className="text-gray-500 text-sm mb-6">Select all that apply, you can change this later.</p>
 
               <div className="grid grid-cols-2 gap-3 mb-6">
                 {goals.map(({ id, label, icon: Icon }) => (
@@ -214,7 +214,7 @@ export default function OnboardingClient({ initialUsername = "" }: { initialUser
                 <Rocket className="w-6 h-6 text-cyan-400" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-1">Where do you want to start?</h2>
-              <p className="text-gray-500 text-sm mb-6">You can do all of these  —  just pick your first step.</p>
+              <p className="text-gray-500 text-sm mb-6">You can do all of these, just pick your first step.</p>
 
               <div className="space-y-3 mb-6">
                 {firstActions.map((action) => (

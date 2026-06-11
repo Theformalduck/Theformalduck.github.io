@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -83,12 +83,12 @@ export default function DashboardPage() {
     );
   }
 
-  // Never paint a zeroed dashboard from a failed/empty response — show a retry instead.
+  // Never paint a zeroed dashboard from a failed/empty response, show a retry instead.
   if (error || !data?.stats) {
     return (
       <div className="p-6 flex flex-col items-center justify-center h-64 text-center">
         <p className="text-gray-600 font-medium mb-1">We couldn&apos;t load your dashboard.</p>
-        <p className="text-gray-400 text-sm mb-4">This is usually a brief hiccup — try again.</p>
+        <p className="text-gray-400 text-sm mb-4">This is usually a brief hiccup, try again.</p>
         <button
           onClick={load}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2e9cfe] text-white text-sm font-semibold hover:bg-[#1a8cf0] transition-colors"
@@ -158,15 +158,15 @@ export default function DashboardPage() {
           <p className="text-gray-400 text-[14px]">Plan, launch, and grow your creator business.</p>
         </div>
         <div className="flex items-center gap-2.5">
-          <Link href="/campaigns/new">
+          <Link href="/store/products/new">
             <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#2e9cfe] text-white text-[13px] font-semibold hover:bg-[#1a8cf0] transition-colors cursor-pointer shadow-sm">
-              <Plus className="w-4 h-4" />New Campaign
+              <Plus className="w-4 h-4" />New Product
             </span>
           </Link>
         </div>
       </div>
 
-      {/* Onboarding success path — hides itself once the store is set up */}
+      {/* Onboarding success path, hides itself once the store is set up */}
       <GetStarted setup={setup} username={user?.username} />
 
       {/* Stat cards */}

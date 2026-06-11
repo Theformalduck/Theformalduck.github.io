@@ -31,7 +31,7 @@ export default async function ProfilePage(
     where: { username },
     select: {
       id: true, name: true, username: true, image: true, bio: true, verified: true, role: true, createdAt: true,
-      // NOTE: relation names are inverted — `following` rows = this user's followers,
+      // NOTE: relation names are inverted – `following` rows = this user's followers,
       // `followers` rows = the people this user follows.
       _count: { select: { following: true, followers: true, posts: true } },
       portfolio: { select: { published: true } },

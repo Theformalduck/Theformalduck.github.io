@@ -16,7 +16,7 @@ export interface SetupState {
 const DISMISS_KEY = "sellora_getstarted_dismissed";
 
 /**
- * The "success path" for a new creator — answers "what do I click first?".
+ * The "success path" for a new creator, answers "what do I click first?".
  * Shows ordered, actionable steps with real completion state, surfaces the live
  * store link once it's shareable, and auto-hides once everything is done.
  */
@@ -53,7 +53,7 @@ export function GetStarted({ setup, username }: { setup?: SetupState; username?:
     },
     {
       label: "Share your page",
-      desc: "Your store is live — send the link to your audience.",
+      desc: "Your store is live, send the link to your audience.",
       href: liveUrl ?? "/settings",
       cta: liveUrl ? "View live page" : "Set username",
       done: setup.hasSale,
@@ -62,7 +62,7 @@ export function GetStarted({ setup, username }: { setup?: SetupState; username?:
   ];
 
   const doneCount = steps.filter((s) => s.done).length;
-  if (doneCount === steps.length) return null; // fully set up — get out of the way
+  if (doneCount === steps.length) return null; // fully set up, get out of the way
 
   // The first not-yet-done step is the single most obvious next action.
   const nextIndex = steps.findIndex((s) => !s.done);
@@ -86,7 +86,7 @@ export function GetStarted({ setup, username }: { setup?: SetupState; username?:
           </div>
           <div>
             <h3 className="text-[15px] font-bold text-gray-900 leading-tight">Get your store live</h3>
-            <p className="text-gray-500 text-[12px] mt-0.5">{doneCount} of {steps.length} done — pick up where you left off.</p>
+            <p className="text-gray-500 text-[12px] mt-0.5">{doneCount} of {steps.length} done, pick up where you left off.</p>
           </div>
         </div>
         <button

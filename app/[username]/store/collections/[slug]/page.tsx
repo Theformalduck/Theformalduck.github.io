@@ -15,7 +15,7 @@ export async function generateMetadata(props: PageProps<"/[username]/store/colle
   if (!user) return {};
   const collection = await db.collection.findFirst({ where: { userId: user.id, slug }, select: { name: true, description: true, image: true } });
   if (!collection) return {};
-  const title = `${collection.name} — ${user.name ?? username}`;
+  const title = `${collection.name} – ${user.name ?? username}`;
   const description = collection.description ?? `Shop the ${collection.name} collection.`;
   return {
     title, description,

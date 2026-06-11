@@ -45,7 +45,7 @@ export default function NewCampaignPage() {
     await new Promise((r) => setTimeout(r, 1200));
     setForm((prev) => ({
       ...prev,
-      shortDesc: `Support ${prev.title} — a creative project that pushes boundaries and delivers real value to backers.`,
+      shortDesc: `Support ${prev.title}, a creative project that pushes boundaries and delivers real value to backers.`,
       description: `${prev.title} is a passion project I've been building for months. I need your support to bring it to life!\n\nWhat you'll get:\n• Access to all finished files and deliverables\n• Regular updates throughout the process\n• Lifetime access to everything we create together\n\nYour backing means everything. Let's make this happen!`,
     }));
     setAiGenerating(false);
@@ -133,7 +133,7 @@ export default function NewCampaignPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Description *</label>
                 <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Tell your story. What are you creating? Why does it matter? Add as much detail as you like — this can be long."
+                  placeholder="Tell your story. What are you creating? Why does it matter? Add as much detail as you like, this can be long."
                   rows={10}
                   className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-nexus-500 resize-y min-h-[160px]" />
                 <p className="text-gray-400 text-xs mt-1">{form.description.length.toLocaleString()} characters</p>
@@ -302,9 +302,9 @@ export default function NewCampaignPage() {
             <div className="space-y-3">
               {[
                 { label: "Title", value: form.title },
-                { label: "Goal", value: form.goal ? `$${Number(form.goal).toLocaleString()}` : "—" },
+                { label: "Goal", value: form.goal ? `$${Number(form.goal).toLocaleString()}` : "–" },
                 { label: "Deadline", value: form.deadline || "No deadline set" },
-                { label: "Category", value: form.category || "—" },
+                { label: "Category", value: form.category || "–" },
                 { label: "Reward Tiers", value: `${tiers.filter((t) => t.title).length} tiers` },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between py-2 border-b border-gray-100">

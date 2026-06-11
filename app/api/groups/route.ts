@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sanitizeField, sanitizeUrl } from "@/lib/sanitize";
+import { moderateFields } from "@/lib/moderation";
 import { captureError } from "@/lib/logger";
 
 // List the groups the user belongs to, public groups to discover, and any
@@ -64,6 +65,10 @@ export async function POST(req: NextRequest) {
   const name = sanitizeField(body.name, 80);
   if (!name) return NextResponse.json({ error: "Group name is required" }, { status: 400 });
   const description = sanitizeField(body.description, 500) || null;
+
+  const mod = moderateFields(name, description);
+  if (!mod.ok) return NextResponse.json({ error: mod.reason }, { status: 422 });
+
   const image = sanitizeUrl(body.image);
   const visibility = body.visibility === "PRIVATE" ? "PRIVATE" : "PUBLIC";
 

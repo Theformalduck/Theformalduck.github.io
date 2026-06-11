@@ -24,7 +24,7 @@ export async function generateMetadata(props: PageProps<"/[username]/store/produ
   if (!data) return {};
   const product = data.products[0];
   if (!product) return {};
-  const title = `${product.name} — ${data.name ?? username}`;
+  const title = `${product.name} – ${data.name ?? username}`;
   const description = product.description ?? `Buy ${product.name} from ${data.name ?? username}`;
   const appUrl = process.env.NEXTAUTH_URL ?? "";
   return {

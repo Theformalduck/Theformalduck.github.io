@@ -14,7 +14,7 @@ const plans = [
     features: [
       "1 portfolio site",
       "1 active campaign",
-      "Store — up to 10 products",
+      "Store, up to 10 products",
       "500 community followers",
       "sellora.app/username subdomain",
       "Standard analytics",
@@ -41,7 +41,7 @@ const plans = [
       "Priority support",
       "Recurring subscriptions",
     ],
-    cta: "Start Pro — 14 days free",
+    cta: "Start Pro – 14 days free",
     href: "/signup?plan=pro",
     highlight: true,
   },

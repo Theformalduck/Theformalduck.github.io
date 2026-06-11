@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sanitizeField, sanitizeArray } from "@/lib/sanitize";
+import { moderateFields } from "@/lib/moderation";
 import { rateLimit } from "@/lib/rate-limit";
 import { captureError } from "@/lib/logger";
 
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
     const group = searchParams.get("group");
     let whereClause: Record<string, unknown>;
     if (group) {
-      // Group feed — private groups are members-only.
+      // Group feed, private groups are members-only.
       const g = await db.group.findUnique({ where: { id: group }, select: { visibility: true } });
       if (!g) return NextResponse.json({ posts: [], nextCursor: null });
       if (g.visibility === "PRIVATE") {
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
       }
       whereClause = { groupId: group };
     } else if (feed === "following") {
-      // Main feed only — group posts stay inside their groups.
+      // Main feed only, group posts stay inside their groups.
       whereClause = { groupId: null, userId: { in: [...followedSet] } };
     } else {
       whereClause = { groupId: null };
@@ -94,6 +95,9 @@ export async function POST(req: NextRequest) {
     if (!content) {
       return NextResponse.json({ error: "content is required" }, { status: 400 });
     }
+
+    const mod = moderateFields(content, ...tags);
+    if (!mod.ok) return NextResponse.json({ error: mod.reason }, { status: 422 });
 
     // Posting into a group requires active membership.
     if (groupId) {

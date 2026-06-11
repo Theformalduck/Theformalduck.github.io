@@ -62,7 +62,7 @@ export default function TermsPage() {
 
       <h2>6. Intellectual property</h2>
       <p>
-        The Service itself — including our software, design, and trademarks — is owned by Sellora and
+        The Service itself, including our software, design, and trademarks, is owned by Sellora and
         protected by law. These Terms do not grant you rights to our branding or technology except as
         needed to use the Service.
       </p>

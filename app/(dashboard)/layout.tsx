@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 import { VerifyEmailBanner } from "@/components/dashboard/verify-email-banner";
 import { FeedbackButton } from "@/components/dashboard/feedback-button";
+import { NotificationAlerts } from "@/components/dashboard/notification-alerts";
 
 export default function DashboardLayout({
   children,
@@ -24,6 +25,7 @@ export default function DashboardLayout({
         </main>
       </div>
       <FeedbackButton />
+      <NotificationAlerts />
     </div>
   );
 }

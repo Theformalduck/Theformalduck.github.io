@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("[stripe/connect POST]", err);
     const raw = String(err?.message ?? "");
-    // The platform's OWN Stripe account is rejected — under it no connected
+    // The platform's OWN Stripe account is rejected, under it no connected
     // account can be created or linked, so recovery is impossible here. This is
     // a Stripe account-status problem, not a user error: explain it actionably.
     if (raw.toLowerCase().includes("your account has been rejected")) {

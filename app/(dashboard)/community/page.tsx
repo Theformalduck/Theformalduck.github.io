@@ -47,12 +47,14 @@ export default function CommunityPage() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [newGroup, setNewGroup] = useState<{ name: string; description: string; visibility: "PUBLIC" | "PRIVATE" }>({ name: "", description: "", visibility: "PUBLIC" });
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [groupError, setGroupError] = useState<string | null>(null);
   const [requested, setRequested] = useState<Set<string>>(new Set());
   const [posts, setPosts] = useState<any[]>([]);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [postText, setPostText] = useState("");
   const [posting, setPosting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
   const [postImages, setPostImages] = useState<string[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
@@ -64,6 +66,7 @@ export default function CommunityPage() {
   const [comments, setComments] = useState<Record<string, any[]>>({});
   const [commentText, setCommentText] = useState<Record<string, string>>({});
   const [commentLoading, setCommentLoading] = useState<Set<string>>(new Set());
+  const [commentError, setCommentError] = useState<Record<string, string>>({});
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [copiedPost, setCopiedPost] = useState<string | null>(null);
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
@@ -171,6 +174,7 @@ export default function CommunityPage() {
   const handlePost = async () => {
     if (!postText.trim()) return;
     setPosting(true);
+    setPostError(null);
     try {
       const res = await fetch("/api/posts", {
         method: "POST",
@@ -184,6 +188,9 @@ export default function CommunityPage() {
         setPostText("");
         setPostImages([]);
         setMyStats((s) => ({ ...s, posts: s.posts + 1 }));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setPostError(data.error ?? "Couldn't post. Please try again.");
       }
     } finally {
       setPosting(false);
@@ -193,6 +200,7 @@ export default function CommunityPage() {
   const createGroup = async () => {
     if (!newGroup.name.trim()) return;
     setCreatingGroup(true);
+    setGroupError(null);
     try {
       const res = await fetch("/api/groups", {
         method: "POST",
@@ -205,6 +213,9 @@ export default function CommunityPage() {
         setShowCreateGroup(false);
         setNewGroup({ name: "", description: "", visibility: "PUBLIC" });
         setSelectedGroup(g);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setGroupError(data.error ?? "Couldn't create group. Please try again.");
       }
     } finally {
       setCreatingGroup(false);
@@ -297,7 +308,7 @@ export default function CommunityPage() {
     setOpenMenu(null);
     try {
       await fetch("/api/reports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targetType: "post", targetId: postId, reason }) });
-      setReportMsg("Report submitted — our team will review it.");
+      setReportMsg("Report submitted, our team will review it.");
       setTimeout(() => setReportMsg(""), 3000);
     } catch { /* ignore */ }
   };
@@ -344,12 +355,16 @@ export default function CommunityPage() {
         const newComment = await res.json();
         setComments((prev) => ({ ...prev, [postId]: [...(prev[postId] ?? []), newComment] }));
         setCommentText((prev) => ({ ...prev, [postId]: "" }));
+        setCommentError((prev) => { const n = { ...prev }; delete n[postId]; return n; });
         setPosts((prev) =>
           prev.map((p) => p.id === postId
             ? { ...p, _count: { ...p._count, comments: (p._count?.comments ?? 0) + 1 } }
             : p
           )
         );
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setCommentError((prev) => ({ ...prev, [postId]: data.error ?? "Couldn't post comment." }));
       }
     } finally {
       setCommentLoading((prev) => {
@@ -428,7 +443,7 @@ export default function CommunityPage() {
               <div className="flex-1">
                 <textarea
                   value={postText}
-                  onChange={(e) => setPostText(e.target.value)}
+                  onChange={(e) => { setPostText(e.target.value); if (postError) setPostError(null); }}
                   placeholder={selectedGroup ? `Share something in ${selectedGroup.name}…` : "Share something with your community..."}
                   rows={3}
                   className="w-full bg-transparent text-gray-700 text-sm placeholder:text-gray-400 resize-none focus:outline-none leading-relaxed"
@@ -468,6 +483,7 @@ export default function CommunityPage() {
                     Post
                   </Button>
                 </div>
+                {postError && <p className="text-red-500 text-xs mt-2">{postError}</p>}
               </div>
             </div>
           </div>
@@ -663,11 +679,12 @@ export default function CommunityPage() {
                         {/* Comment input */}
                         <div className="flex items-center gap-2.5 pt-1">
                           <Avatar name={currentUser?.name} image={currentUser?.image} size="sm" />
-                          <div className="flex-1 flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
+                          <div className="flex-1">
+                          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
                             <input
                               type="text"
                               value={commentText[post.id] ?? ""}
-                              onChange={(e) => setCommentText((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                              onChange={(e) => { const v = e.target.value; setCommentText((prev) => ({ ...prev, [post.id]: v })); if (commentError[post.id]) setCommentError((prev) => { const n = { ...prev }; delete n[post.id]; return n; }); }}
                               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleComment(post.id); } }}
                               placeholder="Write a comment..."
                               className="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
@@ -682,6 +699,8 @@ export default function CommunityPage() {
                                 : <Send className="w-4 h-4" />
                               }
                             </button>
+                          </div>
+                          {commentError[post.id] && <p className="text-red-500 text-xs mt-1 px-1">{commentError[post.id]}</p>}
                           </div>
                         </div>
                       </div>
@@ -753,7 +772,7 @@ export default function CommunityPage() {
             )}
 
             {groups.myGroups.length === 0 && groups.discover.length === 0 && (
-              <p className="text-gray-400 text-xs">No groups yet — create the first one!</p>
+              <p className="text-gray-400 text-xs">No groups yet, create the first one!</p>
             )}
           </div>
 
@@ -878,6 +897,7 @@ export default function CommunityPage() {
               ))}
             </div>
 
+            {groupError && <p className="text-red-500 text-xs mb-2">{groupError}</p>}
             <Button variant="lime" className="w-full justify-center" disabled={!newGroup.name.trim() || creatingGroup} onClick={createGroup}>
               {creatingGroup ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create group
             </Button>

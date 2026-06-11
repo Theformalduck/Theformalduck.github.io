@@ -11,10 +11,15 @@ const SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 
 export const stripeEnabled = !!SECRET_KEY;
 
-// Platform fee as a percentage of the order total (e.g. "10" → 10%). 0 = no fee.
+// Platform fee Sellora takes on every sale, charged as a Stripe application fee
+// on the destination charge, so it applies to both store checkout and campaign
+// pledges automatically. Override per environment with STRIPE_PLATFORM_FEE_PERCENT
+// (e.g. "0" to disable, "10" for 10%).
+export const DEFAULT_PLATFORM_FEE_PERCENT = 7.5;
 export const platformFeePercent = (() => {
-  const n = parseFloat(process.env.STRIPE_PLATFORM_FEE_PERCENT ?? "0");
-  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+  const raw = process.env.STRIPE_PLATFORM_FEE_PERCENT;
+  const n = raw !== undefined ? parseFloat(raw) : DEFAULT_PLATFORM_FEE_PERCENT;
+  return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : DEFAULT_PLATFORM_FEE_PERCENT;
 })();
 
 // Back-compat: some modules import { stripe }. Null when not configured.

@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { Share2, Link as LinkIcon, Globe, PlayCircle, AtSign } from "lucide-react";
 import { SelloraIcon } from "@/components/ui/logo";
 import { CookieSettingsLink } from "@/components/consent/cookie-settings-link";
@@ -54,7 +54,7 @@ export function Footer() {
               <span className="text-white font-bold text-xl">Sellora</span>
             </Link>
             <p className="text-white/40 text-sm leading-relaxed max-w-[220px]">
-              The creator operating system. Build, launch, and grow  —  all in one place.
+              The creator operating system. Build, launch, and grow, all in one place.
             </p>
             <div className="flex items-center gap-3 mt-5">
               {socials.map(({ icon: Icon, href, label }) => (

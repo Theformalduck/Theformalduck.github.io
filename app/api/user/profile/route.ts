@@ -16,10 +16,10 @@ export async function PATCH(req: NextRequest) {
     const name     = body.name !== undefined ? sanitizeField(body.name, 100) : undefined;
     const image    = body.image !== undefined ? sanitizeUrl(body.image) : undefined;
 
-    // Notification preferences — a fixed set of boolean toggles.
+    // Notification preferences, a fixed set of boolean toggles.
     let notificationPrefs: Record<string, boolean> | undefined;
     if (body.notificationPrefs && typeof body.notificationPrefs === "object") {
-      const allowed = ["newBackers", "milestones", "newOrders", "newFollowers", "comments", "platformUpdates"];
+      const allowed = ["emailNotifications", "newBackers", "milestones", "newOrders", "newFollowers", "comments", "platformUpdates"];
       notificationPrefs = {};
       for (const k of allowed) notificationPrefs[k] = !!body.notificationPrefs[k];
     }
@@ -72,9 +72,14 @@ export async function GET() {
       verified: true,
       createdAt: true,
       notificationPrefs: true,
+      passwordHash: true,
       _count: { select: { followers: true, following: true, posts: true } },
     },
   });
 
-  return NextResponse.json(user);
+  if (!user) return NextResponse.json(null);
+  // Never expose the hash — just whether one exists (drives the "Set a password"
+  // UI for Google/OAuth accounts that have no password yet).
+  const { passwordHash, ...rest } = user;
+  return NextResponse.json({ ...rest, hasPassword: !!passwordHash });
 }

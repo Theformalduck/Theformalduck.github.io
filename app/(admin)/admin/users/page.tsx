@@ -120,7 +120,7 @@ export default function AdminUsersPage() {
                           </div>
                       }
                       <div>
-                        <p className="font-medium text-gray-900">{u.name ?? "—"}</p>
+                        <p className="font-medium text-gray-900">{u.name ?? "–"}</p>
                         <p className="text-gray-400 text-xs">{u.email}</p>
                       </div>
                     </div>

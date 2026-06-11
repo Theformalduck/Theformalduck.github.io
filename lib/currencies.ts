@@ -3,7 +3,7 @@
 // Checkout is always processed in the store's base currency via Stripe; the
 // currencies below power an on-store display switcher so international buyers
 // can see approximate prices in their own currency. Rates are static
-// approximations relative to USD — update here or wire `rate` to an FX API.
+// approximations relative to USD, update here or wire `rate` to an FX API.
 
 export interface CurrencyDef {
   code: string;

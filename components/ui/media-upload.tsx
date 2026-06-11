@@ -217,9 +217,9 @@ export function MediaUpload({
                   {placeholder ?? "Click or drag to upload"}
                 </p>
                 <p className={cn("text-gray-400 mt-0.5", compact ? "text-[10px]" : "text-[11px]")}>
-                  {accept === "image" ? "PNG, JPG, GIF, WebP — up to 10 MB" :
-                   accept === "video" ? "MP4, WebM, MOV — up to 500 MB" :
-                   accept === "any"   ? "PDF, ZIP, MP4, and more — up to 500 MB" :
+                  {accept === "image" ? "PNG, JPG, GIF, WebP, up to 10 MB" :
+                   accept === "video" ? "MP4, WebM, MOV, up to 500 MB" :
+                   accept === "any"   ? "PDF, ZIP, MP4, and more, up to 500 MB" :
                    "Images up to 10 MB · Videos up to 500 MB"}
                 </p>
               </div>

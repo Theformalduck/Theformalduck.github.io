@@ -3,10 +3,10 @@ import { after } from "next/server";
 
 // ── Provider configuration ────────────────────────────────────────────────────
 // Email is sent via the first configured provider, in priority order:
-//   1. Resend  — set RESEND_API_KEY (recommended; no extra package to install)
-//   2. SMTP    — set EMAIL_SERVER_HOST / _USER / _PASSWORD (and optional _PORT)
-//   3. Console — nothing configured: emails are logged to the server console
-//                (fine for local dev — verification/reset links print to the terminal)
+//   1. Resend , set RESEND_API_KEY (recommended; no extra package to install)
+//   2. SMTP   , set EMAIL_SERVER_HOST / _USER / _PASSWORD (and optional _PORT)
+//   3. Console, nothing configured: emails are logged to the server console
+//                (fine for local dev, verification/reset links print to the terminal)
 const resendKey = process.env.RESEND_API_KEY;
 const host = process.env.EMAIL_SERVER_HOST;
 const port = Number(process.env.EMAIL_SERVER_PORT ?? 587);
@@ -57,9 +57,9 @@ export async function sendEmail({ to, subject, html, replyTo }: { to: string; su
     return;
   }
 
-  // 3) No provider — log to console (dev convenience)
+  // 3) No provider, log to console (dev convenience)
   console.log(
-    `\n[email — no provider configured]\nTo: ${to}\nSubject: ${subject}\n` +
+    `\n[email, no provider configured]\nTo: ${to}\nSubject: ${subject}\n` +
     `(Set RESEND_API_KEY or EMAIL_SERVER_* to actually send.)\n` +
     `${html.replace(/<[^>]+>/g, "").replace(/\n{2,}/g, "\n").trim()}\n`
   );
@@ -75,7 +75,7 @@ export function sendEmailAfter(opts: { to: string; subject: string; html: string
       try { await sendEmail(opts); } catch (err) { console.error(`[email after] failed to ${opts.to}:`, err); }
     });
   } catch {
-    // Not inside a request — send inline, fire-and-forget.
+    // Not inside a request, send inline, fire-and-forget.
     sendEmail(opts).catch((err) => console.error(`[email] failed to ${opts.to}:`, err));
   }
 }
@@ -126,7 +126,7 @@ export function orderConfirmationEmail(order: {
   const downloadSection = order.downloads?.length
     ? `<hr style="${dividerStyle}" />
        <h3 style="font-size:15px;margin-bottom:12px">Your Downloads</h3>
-       <p style="color:#555;font-size:13px;margin-bottom:12px">Click the links below to download your files. Save them somewhere safe — these links won't expire.</p>
+       <p style="color:#555;font-size:13px;margin-bottom:12px">Click the links below to download your files. Save them somewhere safe, these links won't expire.</p>
        ${order.downloads.map(d =>
          `<div style="margin-bottom:8px">
             <a href="${d.fileUrl}" style="color:#2e9cfe;font-size:14px;text-decoration:none;font-weight:500">
@@ -173,7 +173,7 @@ export function orderStatusEmail(order: {
   const orderNo = order.id.slice(-8).toUpperCase();
 
   const copy: Record<string, { title: string; body: string }> = {
-    PROCESSING: { title: "Your order is being prepared", body: "Good news — the seller is preparing your order for shipment." },
+    PROCESSING: { title: "Your order is being prepared", body: "Good news, the seller is preparing your order for shipment." },
     SHIPPED:    { title: "Your order is on its way!",      body: "Your order has shipped and is heading your way." },
     DELIVERED:  { title: "Your order was delivered",        body: "Your order has been marked as delivered. We hope you love it!" },
     CANCELLED:  { title: "Your order was cancelled",        body: "Your order has been cancelled. If you were charged, a refund will follow." },
@@ -210,7 +210,7 @@ export function lowStockEmail(opts: {
     <p style="color:#555;margin-bottom:8px">
       <strong>${opts.productName}</strong> ${opts.outOfStock
         ? "has sold out and is no longer available to buyers."
-        : `is running low — only <strong>${opts.inventory}</strong> left in stock.`}
+        : `is running low, only <strong>${opts.inventory}</strong> left in stock.`}
     </p>
     <p style="color:#555;margin-bottom:24px">Restock it so you don't miss sales.</p>
     <a href="${editUrl}" style="${btnStyle}">Update Inventory</a>
@@ -232,6 +232,33 @@ export function feedbackEmail(opts: { message: string; category: string; userEma
     <hr style="${dividerStyle}" />
     <p style="color:#555;font-size:13px">From: <strong>${who}</strong></p>
     <p style="${mutedStyle}">Sent from the Sellora dashboard feedback button. Reply directly to respond to the sender.</p>
+  </div>`;
+}
+
+export function newsletterEmail(opts: { subject: string; body: string; storeName: string; storeUsername: string; unsubscribeUrl?: string }) {
+  const storeUrl = `${appUrl}/${opts.storeUsername}/store`;
+  const unsub = opts.unsubscribeUrl
+    ? `<a href="${opts.unsubscribeUrl}" style="color:#999;text-decoration:underline">Unsubscribe</a>`
+    : `Reply with "unsubscribe" to stop`;
+  // opts.body is pre-sanitized rich HTML (see lib/sanitize-html).
+  return `<div style="${baseStyle}">
+    <h2 style="margin-bottom:16px">${escapeHtml(opts.subject)}</h2>
+    <div style="color:#333;font-size:15px;line-height:1.7">${opts.body}</div>
+    <hr style="${dividerStyle}" />
+    <a href="${storeUrl}" style="${btnStyle}">Visit ${escapeHtml(opts.storeName)}</a>
+    <p style="${mutedStyle}">You're receiving this because you subscribed to updates from ${escapeHtml(opts.storeName)}.<br/>${unsub}.</p>
+  </div>`;
+}
+
+// Generic activity notification (new order, comment, follower, message, …).
+// Mirrors the in-app notification so users get the same alert by email.
+export function activityEmail(opts: { title: string; body?: string; link?: string }) {
+  const url = `${appUrl}${opts.link ?? "/dashboard"}`;
+  return `<div style="${baseStyle}">
+    <h2 style="margin-bottom:8px">${escapeHtml(opts.title)}</h2>
+    ${opts.body ? `<p style="color:#555;margin-bottom:24px">${escapeHtml(opts.body)}</p>` : ""}
+    <a href="${url}" style="${btnStyle}">View on Sellora</a>
+    <p style="${mutedStyle}">You're receiving this because activity emails are on. Manage these in Settings → Notifications.</p>
   </div>`;
 }
 

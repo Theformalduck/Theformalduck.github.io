@@ -70,7 +70,7 @@ export default async function AdminOverviewPage() {
             icon={UserX} color="bg-red-50 text-red-600" href="/admin/users?filter=banned"
           />
           <StatCard
-            label="Admin Accounts" value="—"
+            label="Admin Accounts" value="–"
             icon={TrendingUp} color="bg-gray-100 text-gray-600" href="/admin/users?filter=admin"
           />
         </div>

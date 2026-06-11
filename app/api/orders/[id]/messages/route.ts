@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { sanitizeField } from "@/lib/sanitize";
+import { moderateText } from "@/lib/moderation";
+import { notify } from "@/lib/notify";
 import { getActiveAccount, can } from "@/lib/team";
 
 // Resolve the order and the caller's role. The seller side is checked against
@@ -61,6 +63,9 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   const body = sanitizeField((await req.json()).body, 2000).trim();
   if (!body) return NextResponse.json({ error: "Message cannot be empty" }, { status: 400 });
 
+  const mod = moderateText(body);
+  if (!mod.ok) return NextResponse.json({ error: mod.reason }, { status: 422 });
+
   const message = await db.orderMessage.create({
     data: { orderId: id, senderId: session.user.id, body },
     include: { sender: { select: { id: true, name: true, image: true } } },
@@ -71,14 +76,13 @@ export async function POST(req: NextRequest, props: { params: Promise<{ id: stri
   const orderNo = id.slice(-8).toUpperCase();
   await Promise.all(
     recipients.filter(r => r !== session.user!.id).map(userId =>
-      db.notification.create({
-        data: {
-          userId,
-          type: "ORDER_MESSAGE",
-          title: "New message about an order",
-          body: `${message.sender.name ?? "Someone"} sent a message about order #${orderNo}.`,
-          data: { orderId: id },
-        },
+      notify({
+        userId,
+        type: "ORDER_MESSAGE",
+        title: "New message about an order",
+        body: `${message.sender.name ?? "Someone"} sent a message about order #${orderNo}.`,
+        data: { orderId: id },
+        link: "/orders",
       }).catch(() => null)
     )
   );

@@ -179,7 +179,7 @@ export function CampaignsExplore({ campaigns }: { campaigns: ExploreCampaign[] }
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight mb-3">Explore campaigns</h1>
           <p className="text-white/85 text-base sm:text-lg max-w-xl mx-auto">
-            Back bold ideas from creators — and bring them to life.
+            Back bold ideas from creators, and bring them to life.
           </p>
           {/* Search */}
           <div className="mt-7 max-w-xl mx-auto relative">

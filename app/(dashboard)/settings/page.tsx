@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   User, Bell, CreditCard, Shield, Globe, AtSign, Share2, Download,
-  ExternalLink, Check, Loader2, AlertCircle, Trash2, CheckCircle2,
+  ExternalLink, Check, Loader2, AlertCircle, Trash2, CheckCircle2, Volume2,
 } from "lucide-react";
+import { BROWSER_ALERTS_KEY, SOUND_ALERTS_KEY, playChime } from "@/components/dashboard/notification-alerts";
 import { MediaUpload } from "@/components/ui/media-upload";
 import { getInitials } from "@/lib/utils";
 
@@ -100,7 +101,7 @@ function PaymentsContent() {
                 <span className="text-gray-700 text-sm font-medium">Your Stripe account is connected and ready.</span>
               </div>
             </div>
-            <p className="text-gray-400 text-xs">Payments from your sales are deposited to your Stripe account (minus Stripe and platform fees).</p>
+            <p className="text-gray-400 text-xs">Payments from your sales are deposited to your Stripe account, minus Stripe&apos;s processing fees and Sellora&apos;s 7.5% platform fee.</p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => act("dashboard")} disabled={working} className="border-gray-200 text-gray-600">
                 {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />} Stripe dashboard
@@ -173,11 +174,13 @@ export default function SettingsPage() {
   const [saveError, setSaveError] = useState("");
 
   const [passwords, setPasswords] = useState({ current: "", newPw: "", confirm: "" });
+  const [hasPassword, setHasPassword] = useState(true);
   const [pwSaving, setPwSaving] = useState(false);
   const [pwStatus, setPwStatus] = useState<"idle" | "saved" | "error">("idle");
   const [pwError, setPwError] = useState("");
 
   const [notifSettings, setNotifSettings] = useState({
+    emailNotifications: false,
     newBackers: true,
     milestones: true,
     newOrders: true,
@@ -187,6 +190,46 @@ export default function SettingsPage() {
   });
   const [notifSaving, setNotifSaving] = useState(false);
   const [notifSaved, setNotifSaved] = useState(false);
+
+  // Real-time browser/sound alerts are device-specific (tied to the browser's
+  // notification permission), so they live in localStorage, not the DB.
+  const [browserAlerts, setBrowserAlerts] = useState(false);
+  const [soundAlerts, setSoundAlerts] = useState(true);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setBrowserAlerts(localStorage.getItem(BROWSER_ALERTS_KEY) === "1");
+    setSoundAlerts(localStorage.getItem(SOUND_ALERTS_KEY) !== "0");
+    setNotifPermission("Notification" in window ? Notification.permission : "unsupported");
+  }, []);
+
+  const enableBrowserAlerts = async () => {
+    if (!("Notification" in window)) return;
+    let perm = Notification.permission;
+    if (perm === "default") perm = await Notification.requestPermission();
+    setNotifPermission(perm);
+    if (perm === "granted") {
+      localStorage.setItem(BROWSER_ALERTS_KEY, "1");
+      setBrowserAlerts(true);
+    }
+  };
+  const disableBrowserAlerts = () => {
+    localStorage.setItem(BROWSER_ALERTS_KEY, "0");
+    setBrowserAlerts(false);
+  };
+  const toggleSound = () => {
+    const next = !soundAlerts;
+    setSoundAlerts(next);
+    localStorage.setItem(SOUND_ALERTS_KEY, next ? "1" : "0");
+    if (next) playChime();
+  };
+  const testAlert = () => {
+    if (soundAlerts) playChime();
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("Test alert", { body: "Your real-time notifications are working 🎉", icon: "/favicon.ico" });
+    }
+  };
 
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
@@ -208,6 +251,7 @@ export default function SettingsPage() {
           if (u.notificationPrefs && typeof u.notificationPrefs === "object") {
             setNotifSettings((prev) => ({ ...prev, ...u.notificationPrefs }));
           }
+          setHasPassword(!!u.hasPassword);
         }
       })
       .finally(() => setLoading(false));
@@ -255,6 +299,7 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error(data.error ?? "Failed to update password");
       setPwStatus("saved");
       setPasswords({ current: "", newPw: "", confirm: "" });
+      setHasPassword(true);
       setTimeout(() => setPwStatus("idle"), 3000);
     } catch (err: any) {
       setPwStatus("error");
@@ -293,7 +338,7 @@ export default function SettingsPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Failed to delete account");
-      // Account gone — end the session and leave.
+      // Account gone, end the session and leave.
       await signOut({ callbackUrl: "/" });
     } catch (err: any) {
       setDeleteError(err.message);
@@ -403,9 +448,65 @@ export default function SettingsPage() {
 
         {/* Notifications */}
         <TabsContent value="notifications" className="space-y-4">
+          {/* Real-time alerts (browser + sound) */}
           <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h3 className="text-gray-900 font-semibold mb-5">Email Notifications</h3>
-            <div className="space-y-4">
+            <h3 className="text-gray-900 font-semibold mb-1">Real-time alerts</h3>
+            <p className="text-gray-500 text-sm mb-5">Get notified the moment something happens, even when Sellora is in another tab.</p>
+            <div className="space-y-1">
+              {/* Browser notifications */}
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <div className="text-gray-700 text-sm font-medium">Browser notifications</div>
+                  <div className="text-gray-400 text-xs">
+                    {notifPermission === "unsupported"
+                      ? "Your browser doesn't support notifications."
+                      : notifPermission === "denied"
+                      ? "Blocked. Enable notifications for this site in your browser settings."
+                      : "Pop up a desktop alert when you're on another tab."}
+                  </div>
+                </div>
+                <button
+                  disabled={notifPermission === "unsupported" || notifPermission === "denied"}
+                  onClick={() => (browserAlerts ? disableBrowserAlerts() : enableBrowserAlerts())}
+                  className={`relative w-10 h-5 rounded-full transition-all disabled:opacity-40 ${browserAlerts ? "bg-nexus-600" : "bg-gray-200"}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${browserAlerts ? "left-[1.4rem]" : "left-0.5"}`} />
+                </button>
+              </div>
+              {/* Sound */}
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <div className="text-gray-700 text-sm font-medium flex items-center gap-1.5"><Volume2 className="w-3.5 h-3.5 text-gray-400" />Alert sound</div>
+                  <div className="text-gray-400 text-xs">Play a chime with each new alert.</div>
+                </div>
+                <button
+                  onClick={toggleSound}
+                  className={`relative w-10 h-5 rounded-full transition-all ${soundAlerts ? "bg-nexus-600" : "bg-gray-200"}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${soundAlerts ? "left-[1.4rem]" : "left-0.5"}`} />
+                </button>
+              </div>
+              <div className="pt-2">
+                <Button variant="outline" size="sm" onClick={testAlert} className="text-gray-600 border-gray-200">Send a test alert</Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Email notifications */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-6">
+            <h3 className="text-gray-900 font-semibold mb-1">Email notifications</h3>
+            <p className="text-gray-500 text-sm mb-4">Email me when something happens while I'm away.</p>
+            {/* Master switch */}
+            <div className="flex items-center justify-between py-2 border-b border-gray-100 mb-2">
+              <div className="text-gray-800 text-sm font-semibold">Email me about activity</div>
+              <button
+                onClick={() => setNotifSettings((prev) => ({ ...prev, emailNotifications: !prev.emailNotifications }))}
+                className={`relative w-10 h-5 rounded-full transition-all ${notifSettings.emailNotifications ? "bg-nexus-600" : "bg-gray-200"}`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${notifSettings.emailNotifications ? "left-[1.4rem]" : "left-0.5"}`} />
+              </button>
+            </div>
+            <div className={`space-y-4 transition-opacity ${notifSettings.emailNotifications ? "" : "opacity-40 pointer-events-none"}`}>
               {[
                 { key: "newBackers", label: "New backers", desc: "When someone backs your campaign" },
                 { key: "milestones", label: "Campaign milestones", desc: "50%, 75%, 100% funded" },
@@ -454,11 +555,18 @@ export default function SettingsPage() {
         {/* Security */}
         <TabsContent value="security" className="space-y-4">
           <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h3 className="text-gray-900 font-semibold mb-5">Change Password</h3>
+            <h3 className="text-gray-900 font-semibold mb-1">{hasPassword ? "Change Password" : "Set a Password"}</h3>
+            <p className="text-gray-500 text-sm mb-5">
+              {hasPassword
+                ? "Update the password you use to sign in with email."
+                : "Your account was created with Google. Add a password to also sign in with your email and password."}
+            </p>
             <div className="space-y-3 max-w-sm">
-              <Field label="Current Password">
-                <Input type="password" value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} placeholder="••••••••" />
-              </Field>
+              {hasPassword && (
+                <Field label="Current Password">
+                  <Input type="password" value={passwords.current} onChange={(e) => setPasswords({ ...passwords, current: e.target.value })} placeholder="••••••••" />
+                </Field>
+              )}
               <Field label="New Password">
                 <Input type="password" value={passwords.newPw} onChange={(e) => setPasswords({ ...passwords, newPw: e.target.value })} placeholder="Min. 8 characters" />
               </Field>
@@ -472,12 +580,12 @@ export default function SettingsPage() {
               )}
               {pwStatus === "saved" && (
                 <div className="flex items-center gap-2 text-emerald-500 text-xs">
-                  <Check className="w-3.5 h-3.5" />Password updated successfully!
+                  <Check className="w-3.5 h-3.5" />{hasPassword ? "Password updated successfully!" : "Password set! You can now sign in with email too."}
                 </div>
               )}
               <Button variant="lime" size="sm" onClick={handleChangePassword} disabled={pwSaving || !passwords.newPw}>
                 {pwSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Update Password
+                {hasPassword ? "Update Password" : "Set Password"}
               </Button>
             </div>
           </div>
@@ -485,8 +593,8 @@ export default function SettingsPage() {
           <div className="bg-white border border-gray-200 rounded-2xl p-6">
             <h3 className="text-gray-900 font-semibold mb-2">Your data</h3>
             <p className="text-gray-500 text-sm mb-4">
-              Download a copy of the personal data we hold for your account — your profile, store,
-              products, campaigns, orders, and more — as a JSON file. Passwords and tokens are never
+              Download a copy of the personal data we hold for your account, your profile, store,
+              products, campaigns, orders, and more, as a JSON file. Passwords and tokens are never
               included.
             </p>
             <Button asChild variant="outline" size="sm">
