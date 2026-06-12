@@ -112,7 +112,28 @@ export function orderConfirmationEmail(order: {
   storeName: string;
   storeUsername: string;
   downloads?: { productName: string; fileUrl: string }[];
+  shipping?: {
+    name?: string | null; phone?: string | null; email?: string | null;
+    line1?: string | null; line2?: string | null; city?: string | null;
+    state?: string | null; postalCode?: string | null; country?: string | null;
+  } | null;
 }) {
+  // Echo the shipping/contact details back so the buyer can catch a typo.
+  const sh = order.shipping;
+  const shippingSection = (() => {
+    if (!sh) return "";
+    const cityLine = [sh.city, sh.state, sh.postalCode].filter(Boolean).join(", ");
+    const rowsHtml = [sh.name, sh.line1, sh.line2, cityLine, sh.country, sh.phone, sh.email]
+      .filter(Boolean)
+      .map((line) => `<div style="font-size:14px;color:#333;line-height:1.6">${escapeHtml(String(line))}</div>`)
+      .join("");
+    if (!rowsHtml) return "";
+    return `<hr style="${dividerStyle}" />
+       <h3 style="font-size:15px;margin-bottom:8px">Shipping to</h3>
+       ${rowsHtml}
+       <p style="color:#999;font-size:12px;margin-top:8px">Please double-check these details. If anything looks wrong, reply to this email right away so we can update your order before it ships.</p>`;
+  })();
+
   const rows = order.items.map(i =>
     `<tr>
       <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:14px">${i.name}</td>
@@ -154,6 +175,7 @@ export function orderConfirmationEmail(order: {
     <div style="text-align:right;margin-top:12px">
       <span style="font-size:16px;font-weight:700">Total: $${order.total.toFixed(2)}</span>
     </div>
+    ${shippingSection}
     ${downloadSection}
     <hr style="${dividerStyle}" />
     <a href="${storeUrl}" style="${btnStyle}">Visit Store</a>

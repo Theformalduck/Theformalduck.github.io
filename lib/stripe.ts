@@ -90,7 +90,17 @@ export interface CreateCheckoutParams {
   cancelUrl: string;
   brandName?: string;
   buyerEmail?: string | null;
+  collectShipping?: boolean;    // ask for a shipping address (physical goods)
 }
+
+// Countries a buyer can ship to at checkout. Stripe requires an explicit list,
+// so this is a broad set covering most markets; sellers rarely need more.
+const SHIPPING_COUNTRIES = [
+  "US","CA","GB","IE","AU","NZ","DE","FR","ES","IT","NL","BE","AT","CH","SE","NO","DK","FI","PT","PL",
+  "CZ","GR","HU","RO","SK","SI","HR","BG","EE","LV","LT","LU","IS","MT","CY",
+  "JP","KR","SG","HK","MY","TH","PH","ID","IN","AE","SA","IL","TR","ZA",
+  "MX","BR","AR","CL","CO","PE","CR","UY","PA","DO",
+];
 
 // Create a hosted Checkout Session (destination charge → seller, app fee → platform).
 export async function createCheckoutSession(p: CreateCheckoutParams): Promise<{ id: string; url: string | null }> {
@@ -119,6 +129,15 @@ export async function createCheckoutSession(p: CreateCheckoutParams): Promise<{ 
       transfer_data: { destination: p.sellerAccountId },
       ...(p.description ? { description: p.description.slice(0, 250) } : {}),
     },
+    // Always collect the buyer's name + billing address; ask for a shipping
+    // address (and phone) when the cart contains physical goods.
+    billing_address_collection: "required",
+    ...(p.collectShipping
+      ? {
+          shipping_address_collection: { allowed_countries: SHIPPING_COUNTRIES as any },
+          phone_number_collection: { enabled: true },
+        }
+      : {}),
     ...(p.buyerEmail ? { customer_email: p.buyerEmail } : {}),
     ...(p.customId ? { client_reference_id: p.customId.slice(0, 200) } : {}),
     success_url: p.successUrl,
@@ -128,6 +147,38 @@ export async function createCheckoutSession(p: CreateCheckoutParams): Promise<{ 
   return { id: session.id, url: session.url };
 }
 
+export interface CheckoutAddress {
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  line1: string | null;
+  line2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+}
+
+// Pull the buyer's name + address from a completed Checkout Session, preferring
+// the shipping address when one was collected, otherwise the billing address.
+function extractAddress(s: Stripe.Checkout.Session): CheckoutAddress | null {
+  const cust = s.customer_details;
+  const ship = (s as any).shipping_details ?? (s as any).collected_information?.shipping_details ?? null;
+  const addr = ship?.address ?? cust?.address ?? null;
+  if (!addr) return null;
+  return {
+    name: ship?.name ?? cust?.name ?? null,
+    phone: cust?.phone ?? null,
+    email: cust?.email ?? null,
+    line1: addr.line1 ?? null,
+    line2: addr.line2 ?? null,
+    city: addr.city ?? null,
+    state: addr.state ?? null,
+    postalCode: addr.postal_code ?? null,
+    country: addr.country ?? null,
+  };
+}
+
 // Read a session after the buyer returns. `paid` means the payment completed.
 export async function retrieveSession(sessionId: string): Promise<{
   paid: boolean;
@@ -135,6 +186,7 @@ export async function retrieveSession(sessionId: string): Promise<{
   buyerEmail: string | null;
   amount: number;
   currency: string;
+  shipping: CheckoutAddress | null;
 }> {
   const s = await stripeClient().checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] });
   const pi = s.payment_intent;
@@ -145,6 +197,7 @@ export async function retrieveSession(sessionId: string): Promise<{
     buyerEmail: s.customer_details?.email ?? s.customer_email ?? null,
     amount: (s.amount_total ?? 0) / 100,
     currency: (s.currency ?? "usd").toUpperCase(),
+    shipping: extractAddress(s),
   };
 }
 

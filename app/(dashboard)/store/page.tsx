@@ -578,6 +578,22 @@ export default function StorePage() {
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900 mb-1">Mark as shipped</h3>
             <p className="text-sm text-gray-500 mb-5">Add optional tracking details. The customer will be emailed a shipping notification.</p>
+            {(() => {
+              const shipOrder = orders.find(o => o.id === shipModal.orderId);
+              const a = (shipOrder as any)?.shippingAddress as Record<string, string> | null | undefined;
+              if (!a) return null;
+              const lines = [
+                a.name, a.line1, a.line2,
+                [a.city, a.state, a.postalCode].filter(Boolean).join(", "),
+                a.country, a.phone,
+              ].filter(Boolean);
+              return (
+                <div className="mb-5 rounded-xl bg-gray-50 border border-gray-200 p-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5">Ship to</div>
+                  <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{lines.join("\n")}</div>
+                </div>
+              );
+            })()}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Tracking number <span className="text-gray-400 font-normal">(optional)</span></label>

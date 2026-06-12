@@ -53,6 +53,16 @@ export async function POST(req: NextRequest) {
           buyerId: data.buyerId ?? null,
         });
       } else {
+        const sd = session.shipping_details ?? session.collected_information?.shipping_details ?? null;
+        const cd = session.customer_details ?? null;
+        const addr = sd?.address ?? cd?.address ?? null;
+        const shippingAddress = addr
+          ? {
+              name: sd?.name ?? cd?.name ?? null, phone: cd?.phone ?? null, email: cd?.email ?? null,
+              line1: addr.line1 ?? null, line2: addr.line2 ?? null, city: addr.city ?? null,
+              state: addr.state ?? null, postalCode: addr.postal_code ?? null, country: addr.country ?? null,
+            }
+          : null;
         await fulfillStoreOrder({
           stripeSessionId: session.id,
           stripePaymentIntentId: paymentIntentId,
@@ -62,6 +72,7 @@ export async function POST(req: NextRequest) {
           buyerEmail: session.customer_details?.email ?? null,
           discountCode: data.discountCode ?? null,
           creatorUsername: data.creatorUsername ?? null,
+          shippingAddress,
         });
       }
       await db.pendingCheckout.delete({ where: { id: session.id } }).catch(() => {});

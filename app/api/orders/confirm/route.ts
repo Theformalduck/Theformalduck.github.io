@@ -25,12 +25,14 @@ export async function POST(req: NextRequest) {
   let paymentIntentId: string | null = null;
   let buyerEmail: string | null = null;
   let amount = 0;
+  let shipping: Awaited<ReturnType<typeof retrieveSession>>["shipping"] = null;
   try {
     const s = await retrieveSession(sessionId);
     paid = s.paid;
     paymentIntentId = s.paymentIntentId;
     buyerEmail = s.buyerEmail;
     amount = s.amount;
+    shipping = s.shipping;
   } catch (err: any) {
     console.error("[orders/confirm retrieve]", err);
     return NextResponse.json({ error: err?.message ?? "Failed to verify payment" }, { status: 400 });
@@ -63,6 +65,7 @@ export async function POST(req: NextRequest) {
     buyerEmail,
     discountCode: data.discountCode ?? null,
     creatorUsername: data.creatorUsername ?? null,
+    shippingAddress: shipping ?? null,
   });
 
   await db.pendingCheckout.delete({ where: { id: sessionId } }).catch(() => {});

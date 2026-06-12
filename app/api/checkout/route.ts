@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     const creator = await db.user.findUnique({
       where: { username: creatorUsername },
-      select: { id: true, stripeAccountId: true, store: { select: { name: true } } },
+      select: { id: true, stripeAccountId: true, store: { select: { name: true, localPickupOnly: true } } },
     });
 
     if (!creator?.stripeAccountId) {
@@ -102,6 +102,9 @@ export async function POST(req: NextRequest) {
       cancelUrl: `${origin}/${creatorUsername}/store?stripe=cancelled`,
       brandName: creator.store?.name ?? "Sellora",
       buyerEmail: session?.user?.email ?? null,
+      // Ask for a shipping address whenever something physical is in the cart,
+      // unless the store is local-pickup-only (buyers collect in person).
+      collectShipping: !creator.store?.localPickupOnly && products.some((p) => p.type === "PHYSICAL"),
     });
 
     // Stash the cart context to fulfill on return (keyed by the session id).
@@ -122,6 +125,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: checkout.url });
   } catch (err) {
     console.error("[checkout POST]", err);
-    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    // Surface the underlying reason so checkout failures are diagnosable instead
+    // of a blank "Failed to create checkout session".
+    return NextResponse.json(
+      { error: `Couldn't start checkout: ${msg}` },
+      { status: 500 }
+    );
   }
 }

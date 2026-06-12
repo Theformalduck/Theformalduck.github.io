@@ -9,7 +9,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  GripVertical, Trash2, Plus, ChevronDown, ChevronUp, X, Lock, EyeOff,
+  GripVertical, Trash2, Plus, ChevronDown, ChevronUp, X, Lock, Eye, EyeOff,
   Megaphone, Sparkles, Images, Type, Quote, HelpCircle, Play, Mail,
   LayoutGrid, Heading, AlignLeft, MousePointerClick, Image as ImageIcon, Minus, MoveVertical, MoveHorizontal,
 } from "lucide-react";
@@ -40,7 +40,11 @@ interface BuilderPage {
   onDelete?: () => void;
 }
 
-export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage }: { pages: BuilderPage[]; onEditCore?: (panel: string) => void; hiddenCores?: Set<string>; onAddPage?: () => void }) {
+// Core sections that can be shown/hidden with one click (hero & products are
+// always-on and stay locked).
+const TOGGLEABLE_CORES = new Set(["announcement", "trustbar", "iconrow", "testimonials", "imagebanner", "newsletter"]);
+
+export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage, onToggleCore }: { pages: BuilderPage[]; onEditCore?: (panel: string) => void; hiddenCores?: Set<string>; onAddPage?: () => void; onToggleCore?: (core: string) => void }) {
   const [activePage, setActivePage] = useState(pages[0]?.key ?? "");
   const [openId, setOpenId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -120,6 +124,35 @@ export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage }: {
           : <>Reorderable sections for the <strong>{current.label}</strong> page. Drag to reorder, click to edit. They render below the main content on the live store.</>}
       </p>
 
+      {/* Announcement bar — a top-of-page strip, pinned above the page flow so
+          it isn't reorderable, but listed here so it's easy to find, edit & toggle. */}
+      {current.hasCore && (() => {
+        const annHidden = hiddenCores?.has("announcement") ?? false;
+        return (
+          <div className={`rounded-xl border overflow-hidden ${annHidden ? "border-dashed border-gray-200 bg-gray-50/40" : "border-gray-200 bg-gray-50/60"}`}>
+            <div className="flex items-center gap-1 px-2 py-2">
+              <button onClick={() => onEditCore?.("announcements")} className="flex-1 flex items-center gap-2 min-w-0 text-left" title={annHidden ? "Hidden, click to set up" : "Configure in its panel"}>
+                <Megaphone className={`w-4 h-4 flex-shrink-0 ml-1 ${annHidden ? "text-gray-300" : "text-gray-400"}`} />
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-wide font-semibold">
+                    <span className="text-gray-400">Top bar</span>
+                    {annHidden && <span className="text-amber-500 normal-case tracking-normal"> · Hidden</span>}
+                  </div>
+                  <div className={`text-xs font-medium truncate ${annHidden ? "text-gray-400" : "text-gray-800"}`}>Announcement bar</div>
+                </div>
+              </button>
+              <button
+                onClick={() => onToggleCore?.("announcement")}
+                title={annHidden ? "Show on your store" : "Hide from your store"}
+                className={`p-1.5 rounded-lg transition-colors ${annHidden ? "text-amber-400 hover:text-amber-500 hover:bg-amber-50" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"}`}
+              >
+                {annHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={list.map((s) => s.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
@@ -133,6 +166,7 @@ export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage }: {
                 onPatch={(patch) => patchBlock(s.id, patch)}
                 onEditCore={onEditCore}
                 hiddenCores={hiddenCores}
+                onToggleCore={onToggleCore}
               />
             ))}
           </div>
@@ -181,7 +215,7 @@ export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage }: {
 }
 
 function SortableRow({
-  section, open, onToggle, onRemove, onPatch, onEditCore, hiddenCores,
+  section, open, onToggle, onRemove, onPatch, onEditCore, hiddenCores, onToggleCore,
 }: {
   section: LayoutItem;
   open: boolean;
@@ -190,6 +224,7 @@ function SortableRow({
   onPatch: (patch: Partial<StoreSection>) => void;
   onEditCore?: (panel: string) => void;
   hiddenCores?: Set<string>;
+  onToggleCore?: (core: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : undefined, opacity: isDragging ? 0.85 : 1 };
@@ -208,7 +243,7 @@ function SortableRow({
           <button {...attributes} {...listeners} className="p-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing" title="Drag to reorder">
             <GripVertical className="w-4 h-4" />
           </button>
-          <button onClick={() => onEditCore?.(meta?.panel ?? "")} className="flex-1 flex items-center gap-2 min-w-0 text-left" title={hidden ? "Hidden on your store, click to enable" : "Configure in its panel"}>
+          <button onClick={() => onEditCore?.(meta?.panel ?? "")} className="flex-1 flex items-center gap-2 min-w-0 text-left" title={hidden ? "Hidden on your store, click to configure" : "Configure in its panel"}>
             <Icon className={`w-4 h-4 flex-shrink-0 ${hidden ? "text-gray-300" : "text-gray-400"}`} />
             <div className="min-w-0">
               <div className="text-[10px] uppercase tracking-wide font-semibold">
@@ -218,30 +253,51 @@ function SortableRow({
               <div className={`text-xs font-medium truncate ${hidden ? "text-gray-400" : "text-gray-800"}`}>{meta?.label ?? section.core}</div>
             </div>
           </button>
-          {hidden
-            ? <EyeOff className="w-3.5 h-3.5 text-amber-400 mr-1" />
-            : <Lock className="w-3.5 h-3.5 text-gray-300 mr-1" />}
+          {TOGGLEABLE_CORES.has(section.core) && onToggleCore ? (
+            <button
+              onClick={() => onToggleCore(section.core)}
+              title={hidden ? "Show on your store" : "Hide from your store"}
+              className={`p-1.5 rounded-lg transition-colors ${hidden ? "text-amber-400 hover:text-amber-500 hover:bg-amber-50" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"}`}
+            >
+              {hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          ) : (
+            <span className="mr-1 flex items-center" title="Always shown">
+              <Lock className="w-3.5 h-3.5 text-gray-300" />
+            </span>
+          )}
         </div>
       </div>
     );
   }
 
-  // ── Custom block: editable + removable ──
+  // ── Custom block: editable + removable, with one-click hide/show ──
   const meta = SECTION_META.find((m) => m.type === section.type);
   const Icon = ICONS[meta?.icon ?? "Type"] ?? Type;
+  const hidden = section.hidden ?? false;
 
   return (
-    <div ref={setNodeRef} style={style} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+    <div ref={setNodeRef} style={style} className={`rounded-xl border overflow-hidden ${hidden ? "border-dashed border-gray-200 bg-gray-50/40" : "border-gray-200 bg-white"}`}>
       <div className="flex items-center gap-1 px-2 py-2">
         <button {...attributes} {...listeners} className="p-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing" title="Drag to reorder">
           <GripVertical className="w-4 h-4" />
         </button>
         <button onClick={onToggle} className="flex-1 flex items-center gap-2 min-w-0 text-left">
-          <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <Icon className={`w-4 h-4 flex-shrink-0 ${hidden ? "text-gray-300" : "text-gray-400"}`} />
           <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">{meta?.label ?? section.type}</div>
-            <div className="text-xs font-medium text-gray-800 truncate">{layoutItemTitle(section)}</div>
+            <div className="text-[10px] uppercase tracking-wide font-semibold">
+              <span className="text-gray-400">{meta?.label ?? section.type}</span>
+              {hidden && <span className="text-amber-500 normal-case tracking-normal"> · Hidden</span>}
+            </div>
+            <div className={`text-xs font-medium truncate ${hidden ? "text-gray-400" : "text-gray-800"}`}>{layoutItemTitle(section)}</div>
           </div>
+        </button>
+        <button
+          onClick={() => onPatch({ hidden: !hidden })}
+          title={hidden ? "Show on your store" : "Hide from your store"}
+          className={`p-1.5 rounded-lg transition-colors ${hidden ? "text-amber-400 hover:text-amber-500 hover:bg-amber-50" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"}`}
+        >
+          {hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
         </button>
         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
         <button onClick={onRemove} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors" title="Delete section">

@@ -274,8 +274,65 @@ function getPageBg(page: Page, viewportW: number): string {
   return page.bg;
 }
 
+// Below this scale a 1920px design becomes unreadable (e.g. ~0.2× on a phone).
+// On narrow screens we stop shrinking at this floor and let the page pan
+// horizontally instead, so text/buttons stay legible.
+const MIN_MOBILE_SCALE = 0.45;
+
+// A single canvas page. When the design can't fit the screen at a readable size,
+// the page scrolls horizontally (centered by default) instead of shrinking to a
+// tiny thumbnail. Vertical scrolling still moves between pages.
+function CanvasPage({ page, scale, fits }: { page: Page; scale: number; fits: boolean }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Start the horizontal scroll centered so the middle of the design shows first.
+  useEffect(() => {
+    if (fits || !scrollRef.current) return;
+    const el = scrollRef.current;
+    el.scrollLeft = Math.max(0, (el.scrollWidth - el.clientWidth) / 2);
+  }, [fits, scale]);
+
+  return (
+    <div
+      ref={scrollRef}
+      style={{
+        width: "100%",
+        overflowX: fits ? "hidden" : "auto",
+        WebkitOverflowScrolling: "touch",
+        background: page.bg,
+        ...(page.bgImage ? { backgroundImage: `url(${page.bgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
+        display: "flex",
+        justifyContent: fits ? "center" : "flex-start",
+      } as React.CSSProperties}
+    >
+      {/* Clip box is exactly the scaled canvas size; off-canvas decorations are
+          clipped at the edge, identical to the editor artboard. */}
+      <div style={{
+        position: "relative",
+        width: CANVAS_W * scale,
+        height: page.h * scale,
+        overflow: "hidden",
+        flexShrink: 0,
+      }}>
+        <div style={{
+          position: "absolute", top: 0, left: 0,
+          width: CANVAS_W, height: page.h,
+          transformOrigin: "top left",
+          transform: `scale(${scale})`,
+        }}>
+          {[...page.elems].sort((a, b) => a.z - b.z).map(el => (
+            <ElemView key={el.id} el={el} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CanvasRenderer({ doc }: { doc: CanvasDoc }) {
   const [scale, setScale] = useState(1);
+  // Whether the canvas fits the screen without horizontal scrolling.
+  const [fits, setFits] = useState(true);
 
   useEffect(() => {
     const update = () => {
@@ -283,9 +340,14 @@ export function CanvasRenderer({ doc }: { doc: CanvasDoc }) {
       // child container, whose width would itself be inflated by the canvas overflowing,
       // creating a feedback loop that never shrinks the canvas to fit.
       const vw = document.documentElement.clientWidth || window.innerWidth;
+      if (vw <= 0) return;
       // Design canvas is 1920 wide. Scale DOWN to fit narrower screens, but never
-      // scale UP past 1×, so text/buttons are never enlarged beyond their native size.
-      if (vw > 0) setScale(Math.min(1, vw / CANVAS_W));
+      // scale UP past 1×. On phones too narrow to show it legibly, stop at
+      // MIN_MOBILE_SCALE and let the page scroll sideways instead of going tiny.
+      const fit = vw / CANVAS_W;
+      if (fit >= 1) { setScale(1); setFits(true); }
+      else if (fit >= MIN_MOBILE_SCALE) { setScale(fit); setFits(true); }
+      else { setScale(MIN_MOBILE_SCALE); setFits(false); }
     };
     update();
     window.addEventListener("resize", update);
@@ -297,35 +359,7 @@ export function CanvasRenderer({ doc }: { doc: CanvasDoc }) {
       <style dangerouslySetInnerHTML={{ __html: ANIM_CSS }} />
       <link rel="stylesheet" href={GF_URL} />
       {doc.pages.map(page => (
-        <div key={page.id} style={{
-          width: "100%",
-          overflowX: "hidden",
-          background: page.bg,
-          ...(page.bgImage ? { backgroundImage: `url(${page.bgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
-          display: "flex",
-          justifyContent: "center",
-        }}>
-          {/* Clip box is exactly the scaled canvas size, off-canvas decorations are clipped
-              at the 1440 edge, identical to the editor artboard. */}
-          <div style={{
-            position: "relative",
-            width: CANVAS_W * scale,
-            height: page.h * scale,
-            overflow: "hidden",
-            flexShrink: 0,
-          }}>
-            <div style={{
-              position: "absolute", top: 0, left: 0,
-              width: CANVAS_W, height: page.h,
-              transformOrigin: "top left",
-              transform: `scale(${scale})`,
-            }}>
-              {[...page.elems].sort((a, b) => a.z - b.z).map(el => (
-                <ElemView key={el.id} el={el} />
-              ))}
-            </div>
-          </div>
-        </div>
+        <CanvasPage key={page.id} page={page} scale={scale} fits={fits} />
       ))}
     </>
   );

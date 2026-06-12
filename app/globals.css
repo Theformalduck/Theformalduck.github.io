@@ -115,6 +115,22 @@
   to { height: 0; opacity: 0; }
 }
 
+/* Storefront marquees / tickers. Defined once here (not injected per-component)
+   so the keyframes are always present and the scrolling never restarts or
+   freezes when React re-renders the sections that use them. */
+@keyframes store-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes nexus-hero-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes nexus-ticker {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

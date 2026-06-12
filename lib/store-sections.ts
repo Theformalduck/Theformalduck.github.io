@@ -19,6 +19,8 @@ interface Base {
   padBottom?: SectionPad;
   bg?: SectionBg;
   bgColor?: string;
+  /** When true the section is kept but not rendered on the live store (one-click hide). */
+  hidden?: boolean;
 }
 
 export interface BannerSection extends Base {

@@ -24,7 +24,6 @@ export function StoreSections({ sections, theme, accent, accentText, products, u
   if (!Array.isArray(sections) || sections.length === 0) return null;
   return (
     <div className="store-sections">
-      <style>{`@keyframes store-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
       {sections.map((s) => (
         <SectionBlock key={s.id} s={s} theme={theme} accent={accent} accentText={accentText}
           products={products} username={username} formatCurrency={formatCurrency} onAddToCart={onAddToCart} btnRadius={btnRadius} />
@@ -139,7 +138,7 @@ function SectionBlock({ s, theme, accent, accentText, products, username, format
             <div className={colCls} style={{ columnGap: gapPx }}>
               {imgs.map((img, i) => (
                 <div key={i} className="overflow-hidden rounded-xl break-inside-avoid" style={{ background: theme.surfaceHover, marginBottom: gapPx }}>
-                  <img src={img} alt="" className="w-full h-auto hover:scale-105 transition-transform duration-500" />
+                  <img src={img} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} className="w-full h-auto hover:scale-105 transition-transform duration-500" />
                 </div>
               ))}
             </div>
@@ -156,7 +155,7 @@ function SectionBlock({ s, theme, accent, accentText, products, username, format
           <div className={`grid ${colCls}`} style={{ gap: gapPx }}>
             {imgs.map((img, i) => (
               <div key={i} className={`${aspectCls} overflow-hidden rounded-xl`} style={{ background: theme.surfaceHover }}>
-                <img src={img} alt="" className={`w-full ${s.aspect === "auto" ? "h-auto" : "h-full object-cover"} hover:scale-105 transition-transform duration-500`} />
+                <img src={img} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} className={`w-full ${s.aspect === "auto" ? "h-auto" : "h-full object-cover"} hover:scale-105 transition-transform duration-500`} />
               </div>
             ))}
           </div>

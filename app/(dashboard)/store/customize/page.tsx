@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { SectionsBuilder } from "./sections-builder";
-import { defaultHomeLayout, pageUid, slugify, type CustomPage } from "@/lib/store-sections";
+import { defaultHomeLayout, pageUid, slugify, isCoreItem, type CustomPage } from "@/lib/store-sections";
 import { StoreSections } from "@/app/[username]/store/store-sections";
 import { CURRENCIES, CURRENCY_CODES } from "@/lib/currencies";
 
@@ -597,6 +597,36 @@ export default function StoreCustomizePage() {
     [broadcast, scheduleSave]
   );
 
+  // Apply a template's look + starter content, but never clobber images the user
+  // has already added: keep their hero/logo image, and carry their existing
+  // section images into the template's matching sections.
+  const applyTemplate = useCallback((t: (typeof STORE_TEMPLATES)[number]) => {
+    const cur = latestSettings.current;
+    const patch: Partial<StoreSettings> = { ...t.settings };
+
+    if (cur.bannerImage) delete patch.bannerImage;
+    if (cur.logoImage) delete patch.logoImage;
+
+    if (Array.isArray(patch.homeLayout)) {
+      const curCustom = (Array.isArray(cur.homeLayout) ? cur.homeLayout : []).filter((s) => !isCoreItem(s)) as any[];
+      const bannerPool = curCustom.filter((s) => s.type === "banner" && s.image).map((s) => s.image as string);
+      const galleryPool = curCustom.filter((s) => s.type === "gallery").flatMap((s) => ((s.images ?? []) as string[]).filter(Boolean));
+      let bi = 0;
+      let usedGallery = false;
+      patch.homeLayout = (patch.homeLayout as any[]).map((item) => {
+        if (isCoreItem(item)) return item;
+        if (item.type === "banner" && bannerPool[bi]) return { ...item, image: bannerPool[bi++] };
+        if (item.type === "gallery" && galleryPool.length && !usedGallery) {
+          usedGallery = true;
+          return { ...item, images: galleryPool };
+        }
+        return item;
+      }) as StoreSettings["homeLayout"];
+    }
+
+    update(patch);
+  }, [update]);
+
   const undo = useCallback(() => {
     if (historyCursor.current <= 0) return;
     historyCursor.current--;
@@ -698,6 +728,7 @@ export default function StoreCustomizePage() {
       if (!settings.testimonialsEnabled || !((settings.testimonialItems ?? []).length)) hiddenCores.add("testimonials");
       if (!settings.imageBannerEnabled) hiddenCores.add("imagebanner");
       if (!settings.showNewsletter) hiddenCores.add("newsletter");
+      if (!settings.announcementText) hiddenCores.add("announcement");
 
       // Custom pages, user-created, each rendered at /store/p/{slug}.
       const customPages = settings.customPages ?? [];
@@ -710,10 +741,58 @@ export default function StoreCustomizePage() {
       const deletePage = (id: string) =>
         update({ customPages: customPages.filter((p) => p.id !== id) });
 
+      // One-click show/hide for the toggleable core sections. When turning a
+      // section on that has no content yet, seed a little starter content so it
+      // actually appears (otherwise it would stay "Hidden").
+      const toggleCore = (core: string) => {
+        switch (core) {
+          case "announcement":
+            update({ announcementText: settings.announcementText ? null : "Free shipping on orders over $50!" });
+            break;
+          case "trustbar":
+            update({ showTrustBar: !(settings.showTrustBar ?? true) });
+            break;
+          case "iconrow": {
+            const on = !settings.iconRowEnabled;
+            update({
+              iconRowEnabled: on,
+              ...(on && !((settings.iconRowItems ?? []).length) ? {
+                iconRowItems: [
+                  { id: "ir1", icon: "🚚", title: "Fast shipping", text: "On all orders over $75" },
+                  { id: "ir2", icon: "↩️", title: "Easy returns", text: "30-day money back" },
+                  { id: "ir3", icon: "🔒", title: "Secure checkout", text: "Encrypted & protected" },
+                ],
+              } : {}),
+            });
+            break;
+          }
+          case "testimonials": {
+            const on = !settings.testimonialsEnabled;
+            update({
+              testimonialsEnabled: on,
+              ...(on && !((settings.testimonialItems ?? []).length) ? {
+                testimonialItems: [
+                  { id: "t1", text: "Amazing quality and fast shipping. Will buy again!", author: "Alex M.", role: "Verified buyer", rating: 5 },
+                  { id: "t2", text: "Exactly what I wanted, exceeded expectations.", author: "Jordan P.", role: "Verified buyer", rating: 5 },
+                ],
+              } : {}),
+            });
+            break;
+          }
+          case "imagebanner":
+            update({ imageBannerEnabled: !settings.imageBannerEnabled });
+            break;
+          case "newsletter":
+            update({ showNewsletter: !settings.showNewsletter });
+            break;
+        }
+      };
+
       return (
         <SectionsBuilder
           onEditCore={(panel) => panel && openSection(panel as SectionId)}
           hiddenCores={hiddenCores}
+          onToggleCore={toggleCore}
           onAddPage={addPage}
           pages={[
             { key: "home", label: "Home", hasCore: true,
@@ -845,7 +924,7 @@ export default function StoreCustomizePage() {
               return (
                 <button
                   key={t.id}
-                  onClick={() => update(t.settings)}
+                  onClick={() => applyTemplate(t)}
                   className={`block w-full rounded-2xl border bg-white text-left transition-all overflow-hidden ${
                     active ? "border-[#2e9cfe] ring-2 ring-blue-100" : "border-gray-200 hover:border-gray-300"
                   }`}
@@ -1510,30 +1589,6 @@ export default function StoreCustomizePage() {
     if (section === "content") {
       return (
         <>
-          <PanelSection title="Cart">
-            <SelectRow
-              label="Cart type"
-              value={settings.cartBehavior ?? "drawer"}
-              options={[
-                { value: "drawer", label: "Slide-out drawer" },
-                { value: "page", label: "Full cart page" },
-              ]}
-              onChange={(v) => update({ cartBehavior: v as StoreSettings["cartBehavior"] })}
-            />
-            <ToggleRow label="Free Shipping Bar" value={settings.showFreeShippingBar ?? false} onChange={(v) => update({ showFreeShippingBar: v })} />
-            {(settings.showFreeShippingBar ?? false) && (
-              <SliderRow
-                label="Free shipping threshold ($)"
-                value={settings.freeShippingThreshold ?? 50}
-                min={0}
-                max={500}
-                step={5}
-                onChange={(v) => update({ freeShippingThreshold: v })}
-              />
-            )}
-            <ToggleRow label="Cart Note" value={settings.cartNote ?? false} onChange={(v) => update({ cartNote: v })} />
-            <ToggleRow label="Share Buttons" value={settings.showShareButtons ?? true} onChange={(v) => update({ showShareButtons: v })} />
-          </PanelSection>
           <PanelSection title="Inventory">
             <SliderRow
               label="Low-stock alert at"
@@ -1878,6 +1933,63 @@ export default function StoreCustomizePage() {
       const codeCls = "w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 font-mono focus:outline-none focus:border-[#2e9cfe] resize-none";
       return (
         <>
+          <PanelSection title="Cart & Checkout" collapsible defaultOpen hint="How the cart works and the free-shipping bar.">
+            <SelectRow
+              label="Cart type"
+              value={settings.cartBehavior ?? "drawer"}
+              options={[
+                { value: "drawer", label: "Slide-out drawer" },
+                { value: "page", label: "Full cart page" },
+              ]}
+              onChange={(v) => update({ cartBehavior: v as StoreSettings["cartBehavior"] })}
+            />
+            <ToggleRow label="Local pickup only (no shipping)" value={settings.localPickupOnly ?? false} onChange={(v) => update({ localPickupOnly: v })} />
+            {(settings.localPickupOnly ?? false) && (
+              <div className="mb-3">
+                <label className="block text-xs text-gray-500 mb-1">Pickup details <span className="text-gray-400">(shown to buyers)</span></label>
+                <textarea
+                  value={settings.localPickupNote ?? ""}
+                  onChange={(e) => update({ localPickupNote: e.target.value || null })}
+                  rows={2}
+                  maxLength={300}
+                  placeholder="e.g. Pick up in Austin, TX — we'll email you to arrange a time after purchase."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#2e9cfe] resize-none"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">Checkout won't ask for a shipping address, and buyers are told it's pickup-only.</p>
+              </div>
+            )}
+            {!(settings.localPickupOnly ?? false) && (
+            <ToggleRow label="Free Shipping Bar" value={settings.showFreeShippingBar ?? false} onChange={(v) => update({ showFreeShippingBar: v })} />
+            )}
+            {!(settings.localPickupOnly ?? false) && (settings.showFreeShippingBar ?? false) && (
+              <>
+                <SliderRow
+                  label="Free shipping threshold ($)"
+                  value={settings.freeShippingThreshold ?? 50}
+                  min={0}
+                  max={500}
+                  step={5}
+                  onChange={(v) => update({ freeShippingThreshold: v })}
+                />
+                <div className="mb-3">
+                  <label className="block text-xs text-gray-500 mb-1">Reward wording</label>
+                  <input
+                    type="text"
+                    value={settings.freeShippingText ?? "free shipping"}
+                    onChange={(e) => update({ freeShippingText: e.target.value })}
+                    placeholder="free shipping"
+                    maxLength={40}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#2e9cfe]"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Shown as "$X away from <span className="font-medium">{settings.freeShippingText || "free shipping"}</span>" and "You've unlocked <span className="font-medium">{settings.freeShippingText || "free shipping"}</span>!"
+                  </p>
+                </div>
+              </>
+            )}
+            <ToggleRow label="Cart Note" value={settings.cartNote ?? false} onChange={(v) => update({ cartNote: v })} />
+            <ToggleRow label="Share Buttons" value={settings.showShareButtons ?? true} onChange={(v) => update({ showShareButtons: v })} />
+          </PanelSection>
           <PanelSection title="Analytics" collapsible defaultOpen={false} hint="Connect Google Analytics or Meta Pixel.">
             <label className="block text-xs font-medium text-gray-600 mb-1">Google Analytics ID</label>
             <input

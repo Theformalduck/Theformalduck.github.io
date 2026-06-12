@@ -40,12 +40,8 @@ export default async function DiscoverPage() {
       select: {
         username: true, name: true, image: true, verified: true,
         store: { select: { name: true, tagline: true, logoImage: true, bannerImage: true, primaryColor: true } },
-        products: {
-          where: { status: "ACTIVE" },
-          take: 16,
-          orderBy: { createdAt: "desc" },
-          select: { id: true, name: true, price: true, images: true },
-        },
+        // The card now shows a live storefront preview, so individual product
+        // rows are no longer needed here, just the active count.
         _count: { select: { products: { where: { status: "ACTIVE" } } } },
       },
       orderBy: { updatedAt: "desc" },
@@ -164,30 +160,16 @@ export default async function DiscoverPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {shops.map((s) => {
-                // Prefer products that actually have an image; fall back to imageless ones.
-                const withImg = s.products.filter((p) => p.images?.[0]);
-                const tiles = [...withImg, ...s.products.filter((p) => !p.images?.[0])].slice(0, 4);
                 const totalActive = s._count.products;
                 return (
                 <Link key={s.username} href={`/${s.username}/store`}
                   className="group bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-amber-300 hover:shadow-lg transition-all">
-                  {/* product image strip */}
-                  <div className="grid grid-cols-2 gap-px bg-gray-100 h-36">
-                    {tiles.map((p) => (
-                      <div key={p.id} className="bg-gray-50 overflow-hidden relative">
-                        {p.images?.[0] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300">
-                            <StoreIcon className="w-5 h-5" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    {Array.from({ length: Math.max(0, 4 - tiles.length) }).map((_, i) => (
-                      <div key={`e${i}`} className="bg-gray-50" />
-                    ))}
+                  {/* live storefront preview */}
+                  <div className="relative">
+                    <IframePreview src={`/${s.username}/store`} height={184} />
+                    <div className="absolute top-3 right-3 w-7 h-7 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ArrowUpRight className="w-4 h-4 text-white" />
+                    </div>
                   </div>
                   <div className="p-4 flex items-center gap-3">
                     {s.store?.logoImage || s.image ? (

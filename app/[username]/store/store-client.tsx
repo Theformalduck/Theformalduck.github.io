@@ -238,6 +238,9 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
   const showProductZoom       = liveSettings.showProductZoom ?? true;
   const showFreeShippingBar   = liveSettings.showFreeShippingBar ?? false;
   const freeShippingThreshold = liveSettings.freeShippingThreshold ?? 50;
+  const freeShippingText      = liveSettings.freeShippingText || "free shipping";
+  const localPickupOnly       = liveSettings.localPickupOnly ?? false;
+  const localPickupNote       = liveSettings.localPickupNote || "";
   const cartNote              = liveSettings.cartNote ?? false;
   const showShareButtons      = liveSettings.showShareButtons ?? true;
   const stockBadge            = liveSettings.stockBadge ?? true;
@@ -660,6 +663,9 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
 
   const renderHero = () => {
     const hasBanner = !!liveSettings.bannerImage;
+    // If a hero photo fails to load, hide it so the gradient/card backdrop shows
+    // through instead of a broken-image icon (keeps demo/template imagery safe).
+    const hideOnError = (e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = "none"; };
     const taglineText = liveSettings.tagline || user.bio;
     // Optional custom hero copy, falls back to tagline/name when unset.
     const heroTitle = liveSettings.heroHeading || taglineText || displayName;
@@ -724,7 +730,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
         <div className="border-b" style={{ borderColor: theme.border, background: theme.heroBg }}>
           {hasBanner && (
             <div className="h-32 overflow-hidden relative">
-              <img src={liveSettings.bannerImage!} alt="" className="w-full h-full object-cover" />
+              <img src={liveSettings.bannerImage!} alt="" onError={hideOnError} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black/30" />
             </div>
           )}
@@ -779,7 +785,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
             <div className={`${liveSettings.heroTextAlign === "right" ? "lg:order-1" : ""}`}>
               <div className="relative rounded-[1.75rem] overflow-hidden shadow-2xl aspect-[4/5] w-full max-w-md mx-auto" style={{ background: theme.surfaceHover }}>
                 {hasBanner
-                  ? <img src={liveSettings.bannerImage!} alt="" className="w-full h-full object-cover" />
+                  ? <img src={liveSettings.bannerImage!} alt="" onError={hideOnError} className="w-full h-full object-cover" />
                   : featuredProduct?.images?.[0]
                     ? <img src={featuredProduct.images[0]} alt="" className="w-full h-full object-cover" />
                     : <div className="w-full h-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accent}55, ${accent}15)` }}>{renderAvatar("lg")}</div>}
@@ -808,11 +814,8 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
       if (ctaTransforms.length) ctaPosStyle.transform = ctaTransforms.join(" ");
       return (
         <section className="relative overflow-hidden flex flex-col justify-end" style={{ height: heroSize.h }}>
-          <style>{`@keyframes nexus-hero-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
-          {hasBanner
-            ? <img src={liveSettings.bannerImage!} alt="" className="absolute inset-0 w-full h-full object-cover" />
-            : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent}cc 0%, #0a0a0a 100%)` }} />
-          }
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent}cc 0%, #0a0a0a 100%)` }} />
+          {hasBanner && <img src={liveSettings.bannerImage!} alt="" onError={hideOnError} className="absolute inset-0 w-full h-full object-cover" />}
           <div className="absolute inset-0 bg-black" style={{ opacity: heroOverlay / 100 }} />
           {/* Optional headline above the marquee, follows the Text Alignment setting */}
           {(liveSettings.heroHeading || heroSub) && (
@@ -852,7 +855,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
           <div className="px-6 sm:px-12 lg:px-20 pb-14 lg:pb-20">
             <div className="relative rounded-2xl overflow-hidden w-full" style={{ height: heroSize.h, background: theme.surfaceHover }}>
               {hasBanner
-                ? <img src={liveSettings.bannerImage!} alt="" className="w-full h-full object-cover" />
+                ? <img src={liveSettings.bannerImage!} alt="" onError={hideOnError} className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${accent}44, ${accent}11)` }} />}
             </div>
           </div>
@@ -872,10 +875,8 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
         : {};
       return (
         <div className="relative overflow-hidden flex flex-col justify-end" style={{ height: heroSize.h }}>
-          {hasBanner
-            ? <img src={liveSettings.bannerImage!} alt="" className="absolute inset-0 w-full h-full object-cover" />
-            : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent}40 0%, ${accent}15 50%, ${theme.bg} 100%)` }} />
-          }
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${accent}40 0%, ${accent}15 50%, ${theme.bg} 100%)` }} />
+          {hasBanner && <img src={liveSettings.bannerImage!} alt="" onError={hideOnError} className="absolute inset-0 w-full h-full object-cover" />}
           <div className="absolute inset-0 bg-black/50" />
           {heroContentPos ? (
             <div className="flex flex-col items-center max-w-md" style={coverPosStyle}>
@@ -895,9 +896,8 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
 
     // product hero, bold left-aligned text over a gradient background
     if (heroStyle === "product") {
-      const heroBg = hasBanner
-        ? undefined
-        : `linear-gradient(130deg, ${accent}ee 0%, ${accent}99 45%, ${theme.bg} 100%)`;
+      // Always keep the gradient behind the photo so a failed image degrades to it.
+      const heroBg = `linear-gradient(130deg, ${accent}ee 0%, ${accent}99 45%, ${theme.bg} 100%)`;
       const defaultStyle: React.CSSProperties = { paddingBottom: heroSize.pb };
       const posStyle: React.CSSProperties = heroContentPos
         ? { position: "absolute", left: `${heroContentPos.x}%`, top: `${heroContentPos.y}%`, transform: "translate(-50%, -50%)", zIndex: 10, maxWidth: heroContentMaxWidth }
@@ -908,7 +908,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
         <section className="relative overflow-hidden" style={{ height: heroSize.h, background: heroBg }}>
           {hasBanner && (
             <>
-              <img src={liveSettings.bannerImage!} alt="" className="absolute inset-0 w-full h-full object-cover" />
+              <img src={liveSettings.bannerImage!} alt="" onError={hideOnError} className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black" style={{ opacity: heroOverlay / 100 }} />
             </>
           )}
@@ -945,7 +945,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
     // storefront / centered – Shopify Dawn style: full-width banner, centered text lower half, outlined CTA
     const isStorefront = heroStyle === "storefront" || heroStyle === "centered";
     if (isStorefront) {
-      const heroBg = hasBanner ? undefined : `linear-gradient(160deg, ${accent}cc 0%, ${accent}88 100%)`;
+      const heroBg = `linear-gradient(160deg, ${accent}cc 0%, ${accent}88 100%)`;
       const alignCls = heroTextAlign.cls;
       const posStyle: React.CSSProperties = heroContentPos
         ? { position: "absolute", left: `${heroContentPos.x}%`, top: `${heroContentPos.y}%`, transform: "translate(-50%, -50%)", zIndex: 10, textAlign: "center", maxWidth: heroContentMaxWidth }
@@ -956,7 +956,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
           style={{ height: heroSize.h, background: heroBg }}>
           {hasBanner && (
             <>
-              <img src={liveSettings.bannerImage!} alt="Store banner" className="absolute inset-0 w-full h-full object-cover" />
+              <img src={liveSettings.bannerImage!} alt="Store banner" onError={hideOnError} className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black" style={{ opacity: heroOverlay / 100 }} />
             </>
           )}
@@ -1450,6 +1450,8 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
         default:             return null;
       }
     }
+    // A custom section the owner has hidden (kept in the builder, not shown live).
+    if (item.hidden) return null;
     return (
       <div key={item.id} data-edit-section="sections">
         <StoreSections
@@ -1506,10 +1508,6 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
         enabled={!isPreview && !isOwner}
       />
 
-      {/* Ticker animation keyframes */}
-      {tickerEnabled && tickerText && (
-        <style>{`@keyframes nexus-ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }`}</style>
-      )}
 
       {/* ── Toast ── */}
       <AnimatePresence>
@@ -1584,14 +1582,24 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-4">
-              {showFreeShippingBar && cart.length > 0 && (() => {
+              {localPickupOnly && cart.length > 0 && (
+                <div className="mb-4 p-3 rounded-xl" style={{ background: theme.surfaceHover }}>
+                  <p className="text-xs font-semibold mb-1 flex items-center gap-1.5" style={{ color: theme.text }}>
+                    <Truck className="w-3.5 h-3.5" /> Local pickup only
+                  </p>
+                  <p className="text-xs" style={{ color: theme.muted }}>
+                    {localPickupNote || "No shipping, you'll collect your order in person."}
+                  </p>
+                </div>
+              )}
+              {!localPickupOnly && showFreeShippingBar && cart.length > 0 && (() => {
                 const reached = totalPrice >= freeShippingThreshold;
                 const pct = Math.min(100, (totalPrice / freeShippingThreshold) * 100);
                 const remaining = fmt(freeShippingThreshold - totalPrice);
                 return (
                   <div className="mb-4 p-3 rounded-xl" style={{ background: theme.surfaceHover }}>
                     <p className="text-xs font-semibold mb-2 text-center" style={{ color: reached ? "#16a34a" : theme.muted }}>
-                      {reached ? "You've unlocked free shipping!" : `You're ${remaining} away from free shipping!`}
+                      {reached ? `You've unlocked ${freeShippingText}!` : `You're ${remaining} away from ${freeShippingText}!`}
                     </p>
                     <div className="h-1.5 rounded-full overflow-hidden" style={{ background: theme.border }}>
                       <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: reached ? "#16a34a" : accent }} />

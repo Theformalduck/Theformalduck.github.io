@@ -11,6 +11,7 @@ export interface FulfillStoreParams {
   buyerEmail?: string | null;   // payer email from Stripe, for guest resolution + confirmation
   discountCode?: string | null;
   creatorUsername?: string | null;
+  shippingAddress?: object | null;  // captured at Stripe Checkout
 }
 
 // Create the order + run all post-payment side effects (inventory, low-stock
@@ -44,6 +45,7 @@ export async function fulfillStoreOrder(p: FulfillStoreParams): Promise<{ orderI
         status: "PENDING",
         stripeSessionId: p.stripeSessionId,
         ...(p.stripePaymentIntentId ? { stripePaymentIntentId: p.stripePaymentIntentId } : {}),
+        ...(p.shippingAddress ? { shippingAddress: p.shippingAddress as object } : {}),
         items: {
           create: p.items.map((item) => {
             const product = products.find((pr) => pr.id === item.productId);
@@ -146,6 +148,7 @@ export async function fulfillStoreOrder(p: FulfillStoreParams): Promise<{ orderI
         html: orderConfirmationEmail({
           id: order.id, total: p.total, storeName, storeUsername,
           downloads: downloads.length ? downloads : undefined,
+          shipping: (p.shippingAddress as Record<string, string | null>) ?? null,
           items: p.items.map((item) => { const product = products.find((pr) => pr.id === item.productId); return { name: product?.name ?? "Product", quantity: item.quantity, price: product?.price ?? 0 }; }),
         }),
       });

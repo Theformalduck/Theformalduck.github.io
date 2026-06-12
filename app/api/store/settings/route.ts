@@ -36,7 +36,7 @@ export function buildStoreData(body: any) {
     seoTitle, seoDescription, favicon, customCss, typographyScale,
     googleAnalyticsId, metaPixelId, customHeadCode, customBodyCode,
     // New settings
-    showFreeShippingBar, freeShippingThreshold, cartNote, cartBehavior, lowStockThreshold,
+    showFreeShippingBar, freeShippingThreshold, freeShippingText, localPickupOnly, localPickupNote, cartNote, cartBehavior, lowStockThreshold,
     showShareButtons, showWishlist, showProductZoom,
     stockBadge, stockBadgeThreshold,
     showPaymentIcons,
@@ -113,6 +113,9 @@ export function buildStoreData(body: any) {
     // New settings
     ...(showFreeShippingBar !== undefined && { showFreeShippingBar }),
     ...(freeShippingThreshold !== undefined && { freeShippingThreshold }),
+    ...(freeShippingText !== undefined && { freeShippingText: String(freeShippingText).slice(0, 40) || "free shipping" }),
+    ...(localPickupOnly !== undefined && { localPickupOnly: !!localPickupOnly }),
+    ...(localPickupNote !== undefined && { localPickupNote: localPickupNote ? String(localPickupNote).slice(0, 300) : null }),
     ...(cartNote !== undefined && { cartNote }),
     ...(cartBehavior !== undefined && { cartBehavior: cartBehavior === "page" ? "page" : "drawer" }),
     ...(lowStockThreshold !== undefined && { lowStockThreshold: Math.max(0, Math.min(1000, Math.floor(Number(lowStockThreshold) || 0))) }),

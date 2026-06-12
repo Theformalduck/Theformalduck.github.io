@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ShoppingBag, Plus, Minus, X, Shield, Loader2, Truck, Check } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Plus, Minus, X, Shield, Loader2, Truck, Check, MapPin } from "lucide-react";
 import { STORE_THEMES, BUTTON_STYLES, FONT_STYLES, type StoreSettings } from "@/lib/store-themes";
 import { useDisplayCurrency, CurrencySwitcher } from "../currency";
 
@@ -66,6 +66,7 @@ export default function CartClient({
   const totalPrice = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
 
   const freeShipThreshold = storeSettings.freeShippingThreshold ?? 50;
+  const freeShipText = storeSettings.freeShippingText || "free shipping";
   const freeShipReached = totalPrice >= freeShipThreshold;
 
   const applyPromo = async () => {
@@ -203,11 +204,20 @@ export default function CartClient({
             {/* Summary */}
             <div className="lg:col-span-1">
               <div className="rounded-2xl border p-5 space-y-4 sticky top-20" style={{ borderColor: theme.border, background: theme.surface }}>
-                {storeSettings.showFreeShippingBar && (
+                {storeSettings.localPickupOnly ? (
+                  <div className="p-3 rounded-xl text-xs" style={{ background: theme.surfaceHover }}>
+                    <div className="flex items-center gap-1.5 font-semibold mb-1" style={{ color: theme.text }}>
+                      <MapPin className="w-3.5 h-3.5" /> Local pickup only
+                    </div>
+                    <p style={{ color: theme.muted }}>
+                      {storeSettings.localPickupNote || "This store doesn't ship, you'll collect your order in person. No shipping address needed at checkout."}
+                    </p>
+                  </div>
+                ) : storeSettings.showFreeShippingBar && (
                   <div className="p-3 rounded-xl text-xs" style={{ background: theme.surfaceHover }}>
                     <div className="flex items-center gap-1.5 font-semibold mb-2" style={{ color: freeShipReached ? "#16a34a" : theme.muted }}>
                       <Truck className="w-3.5 h-3.5" />
-                      {freeShipReached ? "You've unlocked free shipping!" : `${fmt(freeShipThreshold - totalPrice)} away from free shipping`}
+                      {freeShipReached ? `You've unlocked ${freeShipText}!` : `${fmt(freeShipThreshold - totalPrice)} away from ${freeShipText}`}
                     </div>
                     <div className="h-1.5 rounded-full overflow-hidden" style={{ background: theme.border }}>
                       <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, (totalPrice / freeShipThreshold) * 100)}%`, background: freeShipReached ? "#16a34a" : accent }} />

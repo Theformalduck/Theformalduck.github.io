@@ -337,6 +337,9 @@ model Store {
   // Cart
   showFreeShippingBar    Boolean @default(false)
   freeShippingThreshold  Float   @default(50)
+  freeShippingText       String  @default("free shipping")
+  localPickupOnly        Boolean @default(false)  // no shipping; buyers collect in person
+  localPickupNote        String?                  // pickup location / instructions
   cartNote               Boolean @default(false)
   cartBehavior           String  @default("drawer") // "drawer" | "page"
   // Inventory — seller is alerted when a product crosses this threshold (0 = off)
