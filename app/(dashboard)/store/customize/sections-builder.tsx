@@ -12,18 +12,23 @@ import {
   GripVertical, Trash2, Plus, ChevronDown, ChevronUp, X, Lock, Eye, EyeOff,
   Megaphone, Sparkles, Images, Type, Quote, HelpCircle, Play, Mail,
   LayoutGrid, Heading, AlignLeft, MousePointerClick, Image as ImageIcon, Minus, MoveVertical, MoveHorizontal,
+  Star, Timer, Bookmark, Copy, ChevronRight,
 } from "lucide-react";
 import { MediaUpload } from "@/components/ui/media-upload";
 import {
   type StoreSection, type StoreSectionType, type LayoutItem, type BlocksSection, type Block, type BlockType,
-  SECTION_META, SECTION_NATURAL, defaultSection, sectionTitle, isCoreItem, CORE_META, layoutItemTitle,
-  defaultBlock, BLOCK_META, blockSummary,
+  SECTION_META, SECTION_GROUPS, SECTION_NATURAL, defaultSection, sectionTitle, isCoreItem, CORE_META, layoutItemTitle,
+  defaultBlock, BLOCK_META, blockSummary, cloneSectionWithNewIds,
 } from "@/lib/store-sections";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Megaphone, Sparkles, Images, Type, Quote, HelpCircle, Play, Mail, LayoutGrid,
   Heading, AlignLeft, MousePointerClick, Image: ImageIcon, Minus, MoveVertical, MoveHorizontal,
+  Star, Timer,
 };
+
+/** Lightweight product reference for the Featured Product picker. */
+export interface BuilderProduct { id: string; name: string }
 
 interface BuilderPage {
   key: string;
@@ -44,7 +49,7 @@ interface BuilderPage {
 // always-on and stay locked).
 const TOGGLEABLE_CORES = new Set(["announcement", "trustbar", "iconrow", "testimonials", "imagebanner", "newsletter"]);
 
-export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage, onToggleCore }: { pages: BuilderPage[]; onEditCore?: (panel: string) => void; hiddenCores?: Set<string>; onAddPage?: () => void; onToggleCore?: (core: string) => void }) {
+export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage, onToggleCore, products, savedSections, onSaveSection, onDeleteSaved }: { pages: BuilderPage[]; onEditCore?: (panel: string) => void; hiddenCores?: Set<string>; onAddPage?: () => void; onToggleCore?: (core: string) => void; products?: BuilderProduct[]; savedSections?: StoreSection[]; onSaveSection?: (s: StoreSection) => void; onDeleteSaved?: (id: string) => void }) {
   const [activePage, setActivePage] = useState(pages[0]?.key ?? "");
   const [openId, setOpenId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -54,11 +59,29 @@ export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage, onT
   const onChange = current.onChange;
   const list: LayoutItem[] = Array.isArray(current.sections) ? current.sections : [];
 
-  const addBlock = (type: StoreSectionType) => {
-    const block = defaultSection(type);
-    onChange([...list, block]);
-    setOpenId(block.id);
+  // Insert near where the owner is working: after the row they have open,
+  // otherwise at the end (Shopify inserts at the invocation point too).
+  const insertAt = () => {
+    if (!openId) return list.length;
+    const i = list.findIndex((s) => s.id === openId);
+    return i === -1 ? list.length : i + 1;
+  };
+  const insert = (section: StoreSection) => {
+    const at = insertAt();
+    onChange([...list.slice(0, at), section, ...list.slice(at)]);
+    setOpenId(section.id);
     setAddOpen(false);
+  };
+  const addBlock = (type: StoreSectionType) => insert(defaultSection(type));
+  // Insert a saved section as a fresh copy (new ids, so it can be reused freely).
+  const addSaved = (s: StoreSection) => insert(cloneSectionWithNewIds(s));
+  // Duplicate in place: the clone lands directly under the original.
+  const duplicateBlock = (id: string) => {
+    const i = list.findIndex((s) => s.id === id);
+    if (i === -1 || isCoreItem(list[i])) return;
+    const copy = cloneSectionWithNewIds(list[i] as StoreSection);
+    onChange([...list.slice(0, i + 1), copy, ...list.slice(i + 1)]);
+    setOpenId(copy.id);
   };
   const removeBlock = (id: string) => onChange(list.filter((s) => s.id !== id));
   const patchBlock = (id: string, patch: Partial<StoreSection>) =>
@@ -167,6 +190,9 @@ export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage, onT
                 onEditCore={onEditCore}
                 hiddenCores={hiddenCores}
                 onToggleCore={onToggleCore}
+                products={products}
+                onSave={onSaveSection && !isCoreItem(s) ? () => onSaveSection(s as StoreSection) : undefined}
+                onDuplicate={!isCoreItem(s) ? () => duplicateBlock(s.id) : undefined}
               />
             ))}
           </div>
@@ -187,26 +213,62 @@ export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage, onT
         >
           <Plus className="w-4 h-4" /> Add section
         </button>
+        {/* Click-away + Escape dismiss the picker, like any proper menu. */}
+        {addOpen && <div className="fixed inset-0 z-10" onClick={() => setAddOpen(false)} onKeyDown={(e) => e.key === "Escape" && setAddOpen(false)} />}
         {addOpen && (
-          <div className="mt-2 bg-white rounded-xl border border-gray-200 shadow-lg p-1.5 max-h-72 overflow-y-auto">
-            {SECTION_META.map((m) => {
-              const Icon = ICONS[m.icon] ?? Type;
-              return (
-                <button
-                  key={m.type}
-                  onClick={() => addBlock(m.type)}
-                  className="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-gray-50 text-left transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-gray-800">{m.label}</div>
-                    <div className="text-[11px] text-gray-400 truncate">{m.desc}</div>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="relative z-20 mt-2 bg-white rounded-xl border border-gray-200 shadow-lg p-1.5 max-h-80 overflow-y-auto">
+            {(savedSections?.length ?? 0) > 0 && (
+              <>
+                <p className="px-2.5 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Saved sections</p>
+                {savedSections!.map((s) => {
+                  const m = SECTION_META.find((x) => x.type === s.type);
+                  const Icon = ICONS[m?.icon ?? "Type"] ?? Type;
+                  return (
+                    <div key={s.id} className="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-gray-50 transition-colors group">
+                      <button onClick={() => addSaved(s)} className="flex-1 flex items-center gap-3 text-left min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                          <Bookmark className="w-4 h-4 text-amber-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-gray-800 truncate">{sectionTitle(s)}</div>
+                          <div className="text-[11px] text-gray-400 flex items-center gap-1"><Icon className="w-3 h-3" />{m?.label ?? s.type}</div>
+                        </div>
+                      </button>
+                      {onDeleteSaved && (
+                        <button onClick={() => onDeleteSaved(s.id)} title="Remove from saved"
+                          className="p-1 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                <div className="my-1 h-px bg-gray-100" />
+              </>
+            )}
+            {SECTION_GROUPS.map((group) => (
+              <div key={group}>
+                <p className="px-2.5 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">{group}</p>
+                {SECTION_META.filter((m) => m.group === group).map((m) => {
+                  const Icon = ICONS[m.icon] ?? Type;
+                  return (
+                    <button
+                      key={m.type}
+                      onClick={() => addBlock(m.type)}
+                      className="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-gray-50 text-left transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                        <Icon className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-gray-800">{m.label}</div>
+                        <div className="text-[11px] text-gray-400 truncate">{m.desc}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -215,7 +277,7 @@ export function SectionsBuilder({ pages, onEditCore, hiddenCores, onAddPage, onT
 }
 
 function SortableRow({
-  section, open, onToggle, onRemove, onPatch, onEditCore, hiddenCores, onToggleCore,
+  section, open, onToggle, onRemove, onPatch, onEditCore, hiddenCores, onToggleCore, products, onSave, onDuplicate,
 }: {
   section: LayoutItem;
   open: boolean;
@@ -225,9 +287,16 @@ function SortableRow({
   onEditCore?: (panel: string) => void;
   hiddenCores?: Set<string>;
   onToggleCore?: (core: string) => void;
+  products?: BuilderProduct[];
+  onSave?: () => void;
+  onDuplicate?: () => void;
 }) {
+  const [savedFlash, setSavedFlash] = useState(false);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : undefined, opacity: isDragging ? 0.85 : 1 };
+  // While dragging the row floats above the list (shadow + accent ring), like
+  // Shopify's section list, instead of melting into it at reduced opacity.
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : undefined };
+  const dragCls = isDragging ? "shadow-lg ring-2 ring-[#2e9cfe]/40" : "";
 
   // ── Core (built-in) section: reorderable, configured in its own panel ──
   if (isCoreItem(section)) {
@@ -238,16 +307,16 @@ function SortableRow({
     // a section is on the page when it isn't.
     const hidden = hiddenCores?.has(section.core) ?? false;
     return (
-      <div ref={setNodeRef} style={style} className={`rounded-xl border overflow-hidden ${hidden ? "border-dashed border-gray-200 bg-gray-50/40" : "border-gray-200 bg-gray-50/60"}`}>
-        <div className="flex items-center gap-1 px-2 py-2">
-          <button {...attributes} {...listeners} className="p-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing" title="Drag to reorder">
+      <div ref={setNodeRef} style={style} className={`group rounded-xl border overflow-hidden ${dragCls} ${hidden ? "border-dashed border-gray-200 bg-gray-50/40" : "border-gray-200 bg-gray-50/60"}`}>
+        <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-2 cursor-grab active:cursor-grabbing">
+          <span className="p-1 text-gray-300 group-hover:text-gray-500" title="Drag to reorder">
             <GripVertical className="w-4 h-4" />
-          </button>
+          </span>
           <button onClick={() => onEditCore?.(meta?.panel ?? "")} className="flex-1 flex items-center gap-2 min-w-0 text-left" title={hidden ? "Hidden on your store, click to configure" : "Configure in its panel"}>
             <Icon className={`w-4 h-4 flex-shrink-0 ${hidden ? "text-gray-300" : "text-gray-400"}`} />
             <div className="min-w-0">
               <div className="text-[10px] uppercase tracking-wide font-semibold">
-                <span className="text-gray-400">Core section</span>
+                <span className="text-gray-400">Built-in</span>
                 {hidden && <span className="text-amber-500 normal-case tracking-normal"> · Hidden</span>}
               </div>
               <div className={`text-xs font-medium truncate ${hidden ? "text-gray-400" : "text-gray-800"}`}>{meta?.label ?? section.core}</div>
@@ -266,6 +335,8 @@ function SortableRow({
               <Lock className="w-3.5 h-3.5 text-gray-300" />
             </span>
           )}
+          {/* This row navigates to its own panel, signal it like a link row. */}
+          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-gray-500 flex-shrink-0" />
         </div>
       </div>
     );
@@ -277,20 +348,44 @@ function SortableRow({
   const hidden = section.hidden ?? false;
 
   return (
-    <div ref={setNodeRef} style={style} className={`rounded-xl border overflow-hidden ${hidden ? "border-dashed border-gray-200 bg-gray-50/40" : "border-gray-200 bg-white"}`}>
-      <div className="flex items-center gap-1 px-2 py-2">
-        <button {...attributes} {...listeners} className="p-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing" title="Drag to reorder">
+    <div ref={setNodeRef} style={style} className={`group rounded-xl border overflow-hidden ${dragCls} ${hidden ? "border-dashed border-gray-200 bg-gray-50/40" : "border-gray-200 bg-white"}`}>
+      {/* Whole header is the drag target (clicks still reach the buttons thanks
+          to the 5px activation distance); secondary actions reveal on hover so
+          rows stay calm and Delete is never the easiest thing to hit. */}
+      <div {...attributes} {...listeners} className="flex items-center gap-1 px-2 py-2 cursor-grab active:cursor-grabbing">
+        <span className="p-1 text-gray-300 group-hover:text-gray-500" title="Drag to reorder">
           <GripVertical className="w-4 h-4" />
-        </button>
+        </span>
         <button onClick={onToggle} className="flex-1 flex items-center gap-2 min-w-0 text-left">
           <Icon className={`w-4 h-4 flex-shrink-0 ${hidden ? "text-gray-300" : "text-gray-400"}`} />
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-wide font-semibold">
-              <span className="text-gray-400">{meta?.label ?? section.type}</span>
-              {hidden && <span className="text-amber-500 normal-case tracking-normal"> · Hidden</span>}
+              {savedFlash
+                ? <span className="text-amber-500 normal-case tracking-normal">Saved · reuse via "Add section"</span>
+                : <span className="text-gray-400">{meta?.label ?? section.type}</span>}
+              {hidden && !savedFlash && <span className="text-amber-500 normal-case tracking-normal"> · Hidden</span>}
             </div>
             <div className={`text-xs font-medium truncate ${hidden ? "text-gray-400" : "text-gray-800"}`}>{layoutItemTitle(section)}</div>
           </div>
+        </button>
+        {onSave && (
+          <button
+            onClick={() => { onSave(); setSavedFlash(true); setTimeout(() => setSavedFlash(false), 2500); }}
+            title="Save this section to reuse on any page"
+            className={`p-1.5 rounded-lg transition-all ${savedFlash ? "text-amber-500 bg-amber-50" : "text-gray-300 hover:text-amber-500 hover:bg-amber-50 opacity-0 group-hover:opacity-100"}`}
+          >
+            <Bookmark className={`w-3.5 h-3.5 ${savedFlash ? "fill-current" : ""}`} />
+          </button>
+        )}
+        {onDuplicate && (
+          <button onClick={onDuplicate} title="Duplicate section"
+            className="p-1.5 rounded-lg text-gray-300 hover:text-gray-700 hover:bg-gray-100 transition-all opacity-0 group-hover:opacity-100">
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <button onClick={onRemove} title="Delete section"
+          className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100">
+          <Trash2 className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => onPatch({ hidden: !hidden })}
@@ -299,12 +394,11 @@ function SortableRow({
         >
           {hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
         </button>
-        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
-        <button onClick={onRemove} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors" title="Delete section">
-          <Trash2 className="w-3.5 h-3.5" />
+        <button onClick={onToggle} className="p-1 text-gray-400 hover:text-gray-700" title={open ? "Collapse" : "Edit section"}>
+          <ChevronDown className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
       </div>
-      {open && <div className="px-3 pb-3 pt-1 border-t border-gray-100">{<Editor section={section} onPatch={onPatch} />}</div>}
+      {open && <div className="px-3 pb-3 pt-1 border-t border-gray-100">{<Editor section={section} onPatch={onPatch} products={products} />}</div>}
     </div>
   );
 }
@@ -357,10 +451,10 @@ function AlignToggle({ value, onChange }: { value: "left" | "center"; onChange: 
 }
 
 // ── Section editor: type-specific content + shared design controls ──────────────
-function Editor({ section, onPatch }: { section: StoreSection; onPatch: (patch: Partial<StoreSection>) => void }) {
+function Editor({ section, onPatch, products }: { section: StoreSection; onPatch: (patch: Partial<StoreSection>) => void; products?: BuilderProduct[] }) {
   return (
     <>
-      <TypeFields section={section} onPatch={onPatch} />
+      <TypeFields section={section} onPatch={onPatch} products={products} />
       <DesignControls section={section} onPatch={onPatch} />
     </>
   );
@@ -401,7 +495,15 @@ function DesignControls({ section, onPatch }: { section: StoreSection; onPatch: 
 }
 
 // ── Per-type content fields ─────────────────────────────────────────────────────
-function TypeFields({ section, onPatch }: { section: StoreSection; onPatch: (patch: Partial<StoreSection>) => void }) {
+// Convert an ISO datetime to the local "YYYY-MM-DDTHH:mm" a datetime-local input needs.
+function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function TypeFields({ section, onPatch, products }: { section: StoreSection; onPatch: (patch: Partial<StoreSection>) => void; products?: BuilderProduct[] }) {
   const s = section;
   switch (s.type) {
     case "banner":
@@ -533,6 +635,44 @@ function TypeFields({ section, onPatch }: { section: StoreSection; onPatch: (pat
           <Text label="Heading" value={s.heading} onChange={(v) => onPatch({ heading: v })} />
           <Text label="Subtext" value={s.subtext} onChange={(v) => onPatch({ subtext: v })} textarea />
           <Text label="Button label" value={s.buttonLabel} onChange={(v) => onPatch({ buttonLabel: v })} />
+        </>
+      );
+    case "countdown":
+      return (
+        <>
+          <Text label="Heading" value={s.heading} onChange={(v) => onPatch({ heading: v })} />
+          <Text label="Subtext" value={s.subtext} onChange={(v) => onPatch({ subtext: v })} textarea />
+          <div className="mb-2.5">
+            <label className={labelCls}>Counts down to</label>
+            <input
+              type="datetime-local"
+              value={isoToLocalInput(s.endsAt)}
+              onChange={(e) => { const d = new Date(e.target.value); if (!Number.isNaN(d.getTime())) onPatch({ endsAt: d.toISOString() }); }}
+              className={inputCls}
+            />
+          </div>
+          <Text label="When it ends, show" value={s.expiredText} onChange={(v) => onPatch({ expiredText: v })} placeholder="This offer has ended." />
+          <Text label="Button label (optional)" value={s.ctaLabel ?? ""} onChange={(v) => onPatch({ ctaLabel: v })} placeholder="Shop the sale" />
+          {s.ctaLabel ? <Text label="Button link" value={s.ctaUrl ?? ""} onChange={(v) => onPatch({ ctaUrl: v })} placeholder="#products or https://…" /> : null}
+        </>
+      );
+    case "spotlight":
+      return (
+        <>
+          <Text label="Eyebrow heading" value={s.heading} onChange={(v) => onPatch({ heading: v })} placeholder="Featured product" />
+          <div className="mb-2.5">
+            <label className={labelCls}>Product</label>
+            {products?.length ? (
+              <select value={s.productId} onChange={(e) => onPatch({ productId: e.target.value })} className={inputCls}>
+                <option value="">Newest product (automatic)</option>
+                {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            ) : (
+              <p className="text-[11px] text-gray-400">Add a product to your store first; the newest one shows automatically.</p>
+            )}
+          </div>
+          <Text label="Supporting copy (optional)" value={s.blurb} onChange={(v) => onPatch({ blurb: v })} textarea />
+          <Seg label="Image side" value={s.layout} options={[{ value: "left", label: "Left" }, { value: "right", label: "Right" }]} onChange={(v) => onPatch({ layout: v as "left" | "right" })} />
         </>
       );
     case "blocks":

@@ -46,7 +46,8 @@ export function buildStoreData(body: any) {
     imageBannerImage, imageBannerCtaText, imageBannerLayout,
     iconRowEnabled, iconRowItems,
     homeSections, collectionSections, productSections, homeLayout, customPages,
-    productGalleryStyle, productInfoLayout, showRelatedProducts, relatedProductsCount,
+    productGalleryStyle, productInfoLayout, showRelatedProducts, relatedProductsCount, stickyAddToCart,
+    cartCrossSell, savedSections, showBuyNow, productTrustBadges,
     baseCurrency, enabledCurrencies, showCurrencySwitcher,
   } = body;
 
@@ -147,6 +148,11 @@ export function buildStoreData(body: any) {
     ...(productInfoLayout !== undefined && { productInfoLayout }),
     ...(showRelatedProducts !== undefined && { showRelatedProducts }),
     ...(relatedProductsCount !== undefined && { relatedProductsCount }),
+    ...(stickyAddToCart !== undefined && { stickyAddToCart: !!stickyAddToCart }),
+    ...(cartCrossSell !== undefined && { cartCrossSell: !!cartCrossSell }),
+    ...(savedSections !== undefined && { savedSections: Array.isArray(savedSections) ? savedSections : [] }),
+    ...(showBuyNow !== undefined && { showBuyNow: !!showBuyNow }),
+    ...(productTrustBadges !== undefined && { productTrustBadges: !!productTrustBadges }),
     ...(baseCurrency !== undefined && isCurrency(baseCurrency) && { baseCurrency }),
     ...(enabledCurrencies !== undefined && {
       enabledCurrencies: Array.isArray(enabledCurrencies)

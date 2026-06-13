@@ -11,7 +11,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true }); // silent rate limit to prevent enumeration
   }
 
-  const { email } = await req.json();
+  const { email: rawEmail } = await req.json();
+  // Accounts are stored lowercased (see register); normalize so "Foo@Bar.com" still matches.
+  const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
   if (!email) return NextResponse.json({ error: "Email is required" }, { status: 400 });
 
   // Always return success to prevent user enumeration

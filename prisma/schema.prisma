@@ -380,6 +380,11 @@ model Store {
   productInfoLayout      String  @default("accordion")
   showRelatedProducts    Boolean @default(true)
   relatedProductsCount   Int     @default(4)
+  stickyAddToCart        Boolean @default(false)
+  cartCrossSell          Boolean @default(false)  // "You might also like" in cart
+  savedSections          Json?                    // owner's reusable saved sections
+  showBuyNow             Boolean @default(true)   // direct "Buy now" button on product pages
+  productTrustBadges     Boolean @default(true)   // secure checkout / returns / shipping row
 
   // Markets / multi-currency display
   baseCurrency           String  @default("USD")

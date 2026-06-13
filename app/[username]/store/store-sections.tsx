@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Star, ChevronDown, ShoppingCart } from "lucide-react";
 import { SECTION_NATURAL, type StoreSection, type Block } from "@/lib/store-sections";
@@ -252,7 +252,118 @@ function SectionBlock({ s, theme, accent, accentText, products, username, format
     );
   }
 
+  if (s.type === "countdown") {
+    return (
+      <section style={{ ...padStyle, background: sectionBg }}>
+        <div className={`${wrap} text-center`}>
+          {s.heading && <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: theme.text }}>{s.heading}</h2>}
+          {s.subtext && <p className="text-sm mb-8" style={{ color: theme.muted }}>{s.subtext}</p>}
+          <CountdownTimer endsAt={s.endsAt} expiredText={s.expiredText} theme={theme} accent={accent} />
+          {s.ctaLabel && (
+            <a href={s.ctaUrl || "#products"} className={`inline-flex items-center mt-8 px-7 py-3 text-sm font-bold ${btnRadius}`}
+              style={{ background: accent, color: accentText }}>
+              {s.ctaLabel}
+            </a>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  if (s.type === "spotlight") {
+    // Resolve the chosen product; fall back to the newest one so the section
+    // never renders empty just because nothing is picked yet.
+    const product = products.find((p) => p.id === s.productId) ?? products[0];
+    if (!product) return null;
+    return (
+      <section style={{ ...padStyle, background: sectionBg }}>
+        <div className={`${wrap} grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-14 items-center`}>
+          <div className={s.layout === "right" ? "md:order-2" : ""}>
+            <Link href={`/${username}/store/products/${product.id}`} className="block rounded-2xl overflow-hidden aspect-square" style={{ background: theme.surfaceHover }}>
+              {product.images?.[0] ? (
+                <img src={product.images[0]} alt={product.name} onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center" style={{ color: theme.muted }}>
+                  <ShoppingCart className="w-10 h-10 opacity-40" />
+                </div>
+              )}
+            </Link>
+          </div>
+          <div className={s.layout === "right" ? "md:order-1" : ""}>
+            {s.heading && <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: accent }}>{s.heading}</p>}
+            <Link href={`/${username}/store/products/${product.id}`}>
+              <h2 className="text-3xl sm:text-4xl font-black mb-3 hover:opacity-80 transition-opacity" style={{ color: theme.text }}>{product.name}</h2>
+            </Link>
+            {s.blurb && <p className="text-sm leading-relaxed mb-5" style={{ color: theme.muted }}>{s.blurb}</p>}
+            <p className="text-2xl font-bold mb-6" style={{ color: theme.text }}>{formatCurrency(product.price)}</p>
+            <div className="flex items-center gap-3 flex-wrap">
+              {onAddToCart && (
+                <button onClick={() => onAddToCart(product)} className={`inline-flex items-center gap-2 px-7 py-3 text-sm font-bold ${btnRadius}`}
+                  style={{ background: accent, color: accentText }}>
+                  <ShoppingCart className="w-4 h-4" /> Add to cart
+                </button>
+              )}
+              <Link href={`/${username}/store/products/${product.id}`} className={`inline-flex items-center px-6 py-3 text-sm font-medium border ${btnRadius}`}
+                style={{ borderColor: theme.border, color: theme.text }}>
+                View details
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return null;
+}
+
+// Live countdown. Starts empty and fills on mount so the server-rendered HTML
+// never disagrees with the client (no hydration mismatch), then ticks per second.
+function CountdownTimer({ endsAt, expiredText, theme, accent }: { endsAt: string; expiredText: string; theme: Theme; accent: string }) {
+  const [left, setLeft] = useState<{ d: number; h: number; m: number; s: number } | null | "expired">(null);
+
+  useEffect(() => {
+    const target = new Date(endsAt).getTime();
+    if (Number.isNaN(target)) { setLeft("expired"); return; }
+    const tick = () => {
+      const diff = target - Date.now();
+      if (diff <= 0) { setLeft("expired"); return; }
+      setLeft({
+        d: Math.floor(diff / 86_400_000),
+        h: Math.floor(diff / 3_600_000) % 24,
+        m: Math.floor(diff / 60_000) % 60,
+        s: Math.floor(diff / 1_000) % 60,
+      });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [endsAt]);
+
+  if (left === "expired") {
+    return <p className="text-lg font-semibold" style={{ color: theme.muted }}>{expiredText || "This offer has ended."}</p>;
+  }
+
+  const cells: { label: string; value: number }[] = [
+    { label: "Days", value: left?.d ?? 0 },
+    { label: "Hours", value: left?.h ?? 0 },
+    { label: "Mins", value: left?.m ?? 0 },
+    { label: "Secs", value: left?.s ?? 0 },
+  ];
+  return (
+    <div className="flex items-stretch justify-center gap-3 sm:gap-4" aria-live="polite">
+      {cells.map((c) => (
+        <div key={c.label} className="w-18 sm:w-20 rounded-2xl border px-3 py-3 sm:py-4 min-w-[4.2rem]"
+          style={{ borderColor: theme.border, background: theme.bg }}>
+          <div className="text-2xl sm:text-3xl font-black tabular-nums" style={{ color: accent }}>
+            {left ? String(c.value).padStart(2, "0") : "–"}
+          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider mt-1" style={{ color: theme.muted }}>{c.label}</div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // One sub-block inside a Flexible section.

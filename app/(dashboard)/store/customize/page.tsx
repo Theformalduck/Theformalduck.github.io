@@ -179,21 +179,27 @@ function ToggleRow({
   label,
   value,
   onChange,
+  hint,
 }: {
   label: string;
   value: boolean;
   onChange: (v: boolean) => void;
+  /** Helper text rendered under the label, inside the row, so it can't be mistaken for another control's. */
+  hint?: string;
 }) {
   return (
-    <div className="flex items-center justify-between py-1.5">
-      <span className="text-sm text-gray-700">{label}</span>
+    <div className="flex items-start justify-between py-1.5 gap-3">
+      <div className="min-w-0">
+        <span className="text-sm text-gray-700">{label}</span>
+        {hint && <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">{hint}</p>}
+      </div>
       <button
         type="button"
         role="switch"
         aria-checked={value}
         aria-label={label}
         onClick={() => onChange(!value)}
-        className={`relative inline-flex flex-shrink-0 w-10 h-5 rounded-full transition-colors ${value ? "bg-[#2e9cfe]" : "bg-gray-300"}`}
+        className={`relative inline-flex flex-shrink-0 w-10 h-5 rounded-full transition-colors mt-0.5 ${value ? "bg-[#2e9cfe]" : "bg-gray-300"}`}
       >
         <span
           className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
@@ -243,21 +249,32 @@ function ColorInput({
   value: string;
   onChange: (v: string) => void;
 }) {
+  // Buffer the hex field locally and only commit valid colors, so typing "#2e"
+  // mid-edit never pushes an invalid value into the live preview/autosave.
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+  const commit = (raw: string) => {
+    let v = raw.trim();
+    if (/^#[0-9a-f]{3}$/i.test(v)) v = "#" + v.slice(1).split("").map((c) => c + c).join("");
+    if (/^#[0-9a-f]{6}$/i.test(v)) onChange(v.toLowerCase());
+  };
   return (
     <div className="flex items-center justify-between mb-3">
       <label className="text-sm text-gray-700">{label}</label>
       <div className="flex items-center gap-2">
         <input
           type="color"
-          value={value}
+          value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#000000"}
           onChange={(e) => onChange(e.target.value)}
           className="w-8 h-8 rounded cursor-pointer border border-gray-200 bg-white"
         />
         <input
           type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-24 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs text-gray-700 font-mono focus:outline-none focus:border-[#2e9cfe]"
+          value={draft}
+          onChange={(e) => { setDraft(e.target.value); commit(e.target.value); }}
+          onBlur={() => setDraft(value)}
+          spellCheck={false}
+          className="w-24 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-700 font-mono focus:outline-none focus:border-[#2e9cfe] focus:ring-1 focus:ring-[#2e9cfe]/20"
         />
       </div>
     </div>
@@ -271,6 +288,8 @@ function SliderRow({
   max,
   step = 1,
   onChange,
+  unit,
+  format,
 }: {
   label: string;
   value: number;
@@ -278,12 +297,16 @@ function SliderRow({
   max: number;
   step?: number;
   onChange: (v: number) => void;
+  /** Unit suffix shown with the value, e.g. "%" or "s". */
+  unit?: string;
+  /** Full custom formatter, e.g. (v) => `$${v}`. Wins over `unit`. */
+  format?: (v: number) => string;
 }) {
   return (
     <div className="mb-3">
       <div className="flex items-center justify-between mb-1">
         <label className="text-sm text-gray-700">{label}</label>
-        <span className="text-xs text-gray-400 font-medium">{value}</span>
+        <span className="text-xs text-gray-400 font-medium tabular-nums">{format ? format(value) : `${value}${unit ?? ""}`}</span>
       </div>
       <input
         type="range"
@@ -793,6 +816,17 @@ export default function StoreCustomizePage() {
           onEditCore={(panel) => panel && openSection(panel as SectionId)}
           hiddenCores={hiddenCores}
           onToggleCore={toggleCore}
+          products={realProducts.map((p) => ({ id: p.id, name: p.name }))}
+          savedSections={settings.savedSections ?? []}
+          onSaveSection={(s) => {
+            const saved = settings.savedSections ?? [];
+            // Re-saving the same section updates the stored copy instead of duplicating.
+            const next = saved.some((x) => x.id === s.id)
+              ? saved.map((x) => (x.id === s.id ? s : x))
+              : [...saved, s];
+            update({ savedSections: next });
+          }}
+          onDeleteSaved={(id) => update({ savedSections: (settings.savedSections ?? []).filter((x) => x.id !== id) })}
           onAddPage={addPage}
           pages={[
             { key: "home", label: "Home", hasCore: true,
@@ -818,7 +852,7 @@ export default function StoreCustomizePage() {
     if (section === "productpage") {
       return (
         <>
-          <PanelSection title="Image Gallery">
+          <PanelSection title="Image Gallery" hint="How product photos are presented.">
             <SelectRow
               label="Gallery style"
               value={settings.productGalleryStyle ?? "thumbnails"}
@@ -829,8 +863,36 @@ export default function StoreCustomizePage() {
               ]}
               onChange={(v) => update({ productGalleryStyle: v as StoreSettings["productGalleryStyle"] })}
             />
+            <ToggleRow label="Click to zoom" value={settings.showProductZoom ?? true} onChange={(v) => update({ showProductZoom: v })} />
           </PanelSection>
-          <PanelSection title="Product Info">
+          <PanelSection title="Buying" hint="The purchase actions shoppers see.">
+            <ToggleRow label="Buy now button" hint="Skips the cart and goes straight to checkout." value={settings.showBuyNow ?? true} onChange={(v) => update({ showBuyNow: v })} />
+            <ToggleRow
+              label="Sticky add-to-cart bar"
+              hint="Pins a small buy bar to the bottom of the screen once shoppers scroll. Great on mobile."
+              value={settings.stickyAddToCart ?? false}
+              onChange={(v) => update({ stickyAddToCart: v })}
+            />
+          </PanelSection>
+          <PanelSection title="Badges & Signals" hint="Social proof and urgency cues.">
+            <ToggleRow label="Star ratings" value={settings.showRatings ?? true} onChange={(v) => update({ showRatings: v })} />
+            <ToggleRow label="Stock status" value={settings.stockBadge ?? true} onChange={(v) => update({ stockBadge: v })} />
+            {(settings.stockBadge ?? true) && (
+              <SliderRow
+                label={`Show "Only X left" at or below`}
+                value={settings.stockBadgeThreshold ?? 5}
+                min={1}
+                max={50}
+                onChange={(v) => update({ stockBadgeThreshold: v })}
+              />
+            )}
+            <ToggleRow label="Trust badges row" value={settings.productTrustBadges ?? true} onChange={(v) => update({ productTrustBadges: v })} />
+          </PanelSection>
+          <PanelSection title="Save & Share" hint="Let shoppers save and spread your products.">
+            <ToggleRow label="Wishlist button" value={settings.showWishlist ?? false} onChange={(v) => update({ showWishlist: v })} />
+            <ToggleRow label="Share button" value={settings.showShareButtons ?? true} onChange={(v) => update({ showShareButtons: v })} />
+          </PanelSection>
+          <PanelSection title="Product Info" hint="How the description & details are organized.">
             <SelectRow
               label="Description layout"
               value={settings.productInfoLayout ?? "accordion"}
@@ -920,25 +982,42 @@ export default function StoreCustomizePage() {
           </p>
           <div className="space-y-3">
             {STORE_TEMPLATES.map((t) => {
-              const active = settings.theme === t.settings.theme && settings.heroStyle === t.settings.heroStyle;
+              // Require the color too, so merely picking the same theme in the
+              // Theme panel doesn't false-positive a template as "Applied".
+              const active = settings.theme === t.settings.theme && settings.heroStyle === t.settings.heroStyle && settings.primaryColor === t.settings.primaryColor;
               return (
                 <button
                   key={t.id}
                   onClick={() => applyTemplate(t)}
-                  className={`block w-full rounded-2xl border bg-white text-left transition-all overflow-hidden ${
+                  className={`group relative block w-full rounded-2xl border bg-white text-left transition-all overflow-hidden ${
                     active ? "border-[#2e9cfe] ring-2 ring-blue-100" : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
-                  <TemplatePreview t={t} />
+                  <div className="relative">
+                    <TemplatePreview t={t} />
+                    {/* Explicit affordance: the whole card applies the template. */}
+                    {!active && (
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors flex items-center justify-center">
+                        <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-semibold text-white bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                          Apply template
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   <div className="p-3">
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm font-semibold text-gray-800">{t.name}</div>
-                      {active && <span className="text-[10px] font-semibold text-[#2e9cfe]">Applied</span>}
+                      {active && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#2e9cfe] bg-blue-50 px-1.5 py-0.5 rounded-full">
+                          <Check className="w-2.5 h-2.5" /> Applied
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5 leading-snug">{t.desc}</div>
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {t.tags.map((tag) => (
-                        <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                      {t.tags.map((tag, ti) => (
+                        <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded-full"
+                          style={ti === 0 ? { background: `${t.accent}14`, color: t.accent } : { background: "#f3f4f6", color: "#6b7280" }}>
                           {tag}
                         </span>
                       ))}
@@ -1181,7 +1260,8 @@ export default function StoreCustomizePage() {
                   />
                 </div>
                 <SliderRow
-                  label="Delay (seconds)"
+                  unit="s"
+                  label="Delay"
                   value={settings.popupDelay ?? 5}
                   min={0}
                   max={30}
@@ -1441,8 +1521,9 @@ export default function StoreCustomizePage() {
               </div>
             )}
           </PanelSection>
-          <PanelSection title="Overlay">
+          <PanelSection title="Overlay" hint="Darkens the hero photo so your headline stays readable.">
             <SliderRow
+              unit="%"
               label="Background Overlay"
               value={settings.heroOverlay ?? 50}
               min={0}
@@ -1632,21 +1713,21 @@ export default function StoreCustomizePage() {
                         value={item.author}
                         onChange={(e) => update({ testimonialItems: (settings.testimonialItems ?? []).map((t, j) => j === i ? { ...t, author: e.target.value } : t) })}
                         placeholder="Author name"
-                        className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800 focus:outline-none mb-1"
+                        className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-800 focus:outline-none focus:border-[#2e9cfe] focus:ring-1 focus:ring-[#2e9cfe]/20 mb-1"
                       />
                       <input
                         type="text"
                         value={item.role}
                         onChange={(e) => update({ testimonialItems: (settings.testimonialItems ?? []).map((t, j) => j === i ? { ...t, role: e.target.value } : t) })}
                         placeholder="Role / title"
-                        className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800 focus:outline-none mb-1"
+                        className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-800 focus:outline-none focus:border-[#2e9cfe] focus:ring-1 focus:ring-[#2e9cfe]/20 mb-1"
                       />
                       <textarea
                         value={item.text}
                         onChange={(e) => update({ testimonialItems: (settings.testimonialItems ?? []).map((t, j) => j === i ? { ...t, text: e.target.value } : t) })}
                         placeholder="Testimonial text"
                         rows={2}
-                        className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800 focus:outline-none resize-none mb-1"
+                        className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-800 focus:outline-none focus:border-[#2e9cfe] focus:ring-1 focus:ring-[#2e9cfe]/20 resize-none mb-1"
                       />
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-gray-500">Rating:</span>
@@ -1656,7 +1737,7 @@ export default function StoreCustomizePage() {
                           max={5}
                           value={item.rating}
                           onChange={(e) => update({ testimonialItems: (settings.testimonialItems ?? []).map((t, j) => j === i ? { ...t, rating: Math.min(5, Math.max(1, Number(e.target.value))) } : t) })}
-                          className="w-12 bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800 focus:outline-none"
+                          className="w-12 bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-800 focus:outline-none focus:border-[#2e9cfe] focus:ring-1 focus:ring-[#2e9cfe]/20"
                         />
                         <div className="flex gap-0.5">
                           {[1,2,3,4,5].map(s => <Star key={s} className={`w-3 h-3 ${s <= item.rating ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />)}
@@ -1699,16 +1780,12 @@ export default function StoreCustomizePage() {
                     className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#2e9cfe] resize-none"
                   />
                 </div>
-                <div className="mb-2">
-                  <label className="block text-xs text-gray-500 mb-1">Image URL</label>
-                  <input
-                    type="text"
-                    value={settings.imageBannerImage ?? ""}
-                    onChange={(e) => update({ imageBannerImage: e.target.value || null })}
-                    placeholder="https://example.com/image.jpg"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#2e9cfe]"
-                  />
-                </div>
+                <ImageUploadField
+                  label="Banner image"
+                  value={settings.imageBannerImage}
+                  onChange={(url) => update({ imageBannerImage: url })}
+                  hint="Recommended: 1200×800px or larger."
+                />
                 <div className="mb-2">
                   <label className="block text-xs text-gray-500 mb-1">CTA Button Text</label>
                   <input
@@ -1758,21 +1835,21 @@ export default function StoreCustomizePage() {
                         value={item.icon}
                         onChange={(e) => update({ iconRowItems: (settings.iconRowItems ?? []).map((t, j) => j === i ? { ...t, icon: e.target.value } : t) })}
                         placeholder="Emoji icon (e.g. 🚀)"
-                        className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800 focus:outline-none mb-1"
+                        className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-800 focus:outline-none focus:border-[#2e9cfe] focus:ring-1 focus:ring-[#2e9cfe]/20 mb-1"
                       />
                       <input
                         type="text"
                         value={item.title}
                         onChange={(e) => update({ iconRowItems: (settings.iconRowItems ?? []).map((t, j) => j === i ? { ...t, title: e.target.value } : t) })}
                         placeholder="Title"
-                        className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800 focus:outline-none mb-1"
+                        className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-800 focus:outline-none focus:border-[#2e9cfe] focus:ring-1 focus:ring-[#2e9cfe]/20 mb-1"
                       />
                       <input
                         type="text"
                         value={item.text}
                         onChange={(e) => update({ iconRowItems: (settings.iconRowItems ?? []).map((t, j) => j === i ? { ...t, text: e.target.value } : t) })}
                         placeholder="Description"
-                        className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-800 focus:outline-none"
+                        className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-800 focus:outline-none focus:border-[#2e9cfe] focus:ring-1 focus:ring-[#2e9cfe]/20"
                       />
                     </div>
                   ))}
@@ -1787,21 +1864,44 @@ export default function StoreCustomizePage() {
               </>
             )}
           </PanelSection>
-          <PanelSection title="Custom Buttons">
+          <PanelSection title="Custom Buttons" hint="Extra buttons shown in your hero, with your own label and link.">
             <div className="space-y-2 mb-3">
-              {(settings.customButtons ?? []).map((btn, i) => (
-                <div key={btn.id} className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
-                  <span className="flex-1 text-sm text-gray-700 truncate">{btn.label || "Button"}</span>
-                  <button
-                    onClick={() =>
-                      update({ customButtons: settings.customButtons.filter((_, j) => j !== i) })
-                    }
-                    className="text-gray-500 hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
+              {(settings.customButtons ?? []).map((btn, i) => {
+                const patchBtn = (patch: Partial<CustomButton>) =>
+                  update({ customButtons: settings.customButtons.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
+                return (
+                  <div key={btn.id} className="rounded-lg border border-gray-200 bg-gray-50/60 p-2 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={btn.label}
+                        onChange={(e) => patchBtn({ label: e.target.value })}
+                        placeholder="Button label"
+                        className="flex-1 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm text-gray-800 focus:outline-none focus:border-[#2e9cfe] focus:ring-1 focus:ring-[#2e9cfe]/20"
+                      />
+                      <button
+                        onClick={() => update({ customButtons: settings.customButtons.filter((_, j) => j !== i) })}
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors" title="Delete button"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <input
+                      value={btn.url}
+                      onChange={(e) => patchBtn({ url: e.target.value })}
+                      placeholder="#products or https://…"
+                      className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:border-[#2e9cfe] focus:ring-1 focus:ring-[#2e9cfe]/20"
+                    />
+                    <div className="flex gap-1">
+                      {(["primary", "outline", "ghost"] as const).map((s) => (
+                        <button key={s} onClick={() => patchBtn({ style: s })}
+                          className={`flex-1 py-1 text-[11px] rounded-lg border capitalize transition-colors ${btn.style === s ? "bg-gray-900 text-white border-gray-900" : "border-gray-200 text-gray-600 hover:bg-gray-100"}`}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <button
               onClick={() =>
@@ -1894,7 +1994,7 @@ export default function StoreCustomizePage() {
 
     if (section === "seo") {
       return (
-        <PanelSection title="Search Engine Optimization">
+        <PanelSection title="Search Engine Optimization" hint="How your store appears in Google results.">
           <div className="mb-3">
             <label className="block text-xs text-gray-500 mb-1">Page Title</label>
             <input
@@ -1904,6 +2004,11 @@ export default function StoreCustomizePage() {
               placeholder="My Store – Best Products Online"
               className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#2e9cfe]"
             />
+            <div className="flex justify-end mt-1">
+              <span className={`text-xs ${(settings.seoTitle?.length ?? 0) > 60 ? "text-red-400" : "text-gray-500"}`}>
+                {settings.seoTitle?.length ?? 0} / 60
+              </span>
+            </div>
           </div>
           <div className="mb-3">
             <label className="block text-xs text-gray-500 mb-1">Meta Description</label>
@@ -1922,6 +2027,17 @@ export default function StoreCustomizePage() {
               >
                 {settings.seoDescription?.length ?? 0} / 160
               </span>
+            </div>
+          </div>
+          {/* What-you-get: a Google-style result preview built from the fields above. */}
+          <div className="mb-1">
+            <label className="block text-xs text-gray-500 mb-1.5">Search preview</label>
+            <div className="rounded-lg border border-gray-200 bg-white p-3">
+              <p className="text-[#1a0dab] text-sm leading-snug truncate">{settings.seoTitle || `${storeName} – Online Store`}</p>
+              <p className="text-[11px] text-green-700 truncate">sellora.app/{username || "your-store"}/store</p>
+              <p className="text-xs text-gray-500 leading-snug line-clamp-2 mt-0.5">
+                {settings.seoDescription || "Add a meta description to control what shoppers read here."}
+              </p>
             </div>
           </div>
         </PanelSection>
@@ -1964,7 +2080,8 @@ export default function StoreCustomizePage() {
             {!(settings.localPickupOnly ?? false) && (settings.showFreeShippingBar ?? false) && (
               <>
                 <SliderRow
-                  label="Free shipping threshold ($)"
+                  format={(v) => `$${v}`}
+                  label="Free shipping threshold"
                   value={settings.freeShippingThreshold ?? 50}
                   min={0}
                   max={500}
@@ -1987,8 +2104,8 @@ export default function StoreCustomizePage() {
                 </div>
               </>
             )}
-            <ToggleRow label="Cart Note" value={settings.cartNote ?? false} onChange={(v) => update({ cartNote: v })} />
-            <ToggleRow label="Share Buttons" value={settings.showShareButtons ?? true} onChange={(v) => update({ showShareButtons: v })} />
+            <ToggleRow label="Cart recommendations" hint={`Shows a "You might also like" row of your other products in the cart, one tap to add.`} value={settings.cartCrossSell ?? false} onChange={(v) => update({ cartCrossSell: v })} />
+            <ToggleRow label="Cart Note" hint="Lets buyers leave instructions or a gift message." value={settings.cartNote ?? false} onChange={(v) => update({ cartNote: v })} />
           </PanelSection>
           <PanelSection title="Analytics" collapsible defaultOpen={false} hint="Connect Google Analytics or Meta Pixel.">
             <label className="block text-xs font-medium text-gray-600 mb-1">Google Analytics ID</label>
@@ -3160,63 +3277,93 @@ function TemplatePreview({ t }: { t: (typeof STORE_TEMPLATES)[number] }) {
   const rPx = rad.includes("full") ? 999 : rad.includes("none") ? 0 : rad.includes("2xl") ? 8 : rad.includes("md") ? 3 : 6;
   const hero = (s.heroStyle as string) ?? "storefront";
 
+  // Sell with the template's own voice and photography, not placeholders: the
+  // card shows the exact heading/CTA/imagery that Apply installs.
+  const heading = s.heroHeading ?? t.name;
+  const cta = s.ctaText ?? "Shop now";
+  const overlay = (s.heroOverlay ?? 50) / 100;
+  const photo = s.bannerImage
+    ? <img src={s.bannerImage} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+    : null;
+  const scrim = <div style={{ position: "absolute", inset: 0, background: `rgba(0,0,0,${overlay})` }} />;
+
   const btn = (
-    <span style={{ background: accent, color: onAccent, borderRadius: rPx, fontSize: 5, fontWeight: 700, padding: "2px 6px", display: "inline-block", lineHeight: 1.4 }}>Shop now</span>
+    <span style={{ background: accent, color: onAccent, borderRadius: rPx, fontSize: 5, fontWeight: 700, padding: "2px 6px", display: "inline-block", lineHeight: 1.4 }}>{cta}</span>
   );
-  const HERO_H = 60;
+  const outlineBtn = (
+    <span style={{ border: "1px solid rgba(255,255,255,0.9)", color: "#fff", borderRadius: rPx, fontSize: 5, fontWeight: 700, padding: "2px 6px", display: "inline-block", lineHeight: 1.4 }}>{cta}</span>
+  );
+  // Hero dominance is a primary axis templates differ on — reflect heroSize.
+  const HERO_H = s.heroSize === "fullscreen" ? 78 : s.heroSize === "medium" ? 48 : 60;
 
   let heroBody: React.ReactNode;
   if (hero === "editorial") {
     heroBody = (
       <div style={{ height: HERO_H, padding: "5px 8px", display: "flex", flexDirection: "column" }}>
-        <div className={fontCls} style={{ fontWeight: 800, color: theme.text, fontSize: 16, lineHeight: 0.9, letterSpacing: "-0.03em" }}>{t.name}</div>
-        <div style={{ marginTop: 4, flex: 1, background: theme.surfaceHover, borderRadius: 4 }} />
+        <div className={fontCls} style={{ fontWeight: 800, color: theme.text, fontSize: 14, lineHeight: 0.95, letterSpacing: "-0.03em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{heading}</div>
+        <div style={{ marginTop: 4, flex: 1, borderRadius: 4, position: "relative", overflow: "hidden", background: theme.surfaceHover }}>
+          {photo}
+        </div>
       </div>
     );
   } else if (hero === "marquee") {
     heroBody = (
-      <div style={{ height: HERO_H, background: `linear-gradient(135deg, ${accent}, ${theme.text})`, overflow: "hidden", display: "flex", alignItems: "center" }}>
-        <div className={fontCls} style={{ fontWeight: 900, color: "#fff", fontSize: 22, whiteSpace: "nowrap", letterSpacing: "-0.02em", opacity: 0.95, paddingLeft: 6 }}>SHOP · NEW · SHOP ·</div>
+      <div style={{ height: HERO_H, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", background: `linear-gradient(135deg, ${accent}, ${theme.text})` }}>
+        {photo}{scrim}
+        <div className={fontCls} style={{ position: "relative", fontWeight: 900, color: "#fff", fontSize: 20, whiteSpace: "nowrap", letterSpacing: "-0.02em", opacity: 0.95, paddingLeft: 6 }}>
+          {(s.heroMarqueeText ?? t.name).toUpperCase()} · {(s.heroMarqueeText ?? t.name).toUpperCase()} ·
+        </div>
       </div>
     );
   } else if (hero === "showcase" || hero === "split") {
     heroBody = (
       <div style={{ height: HERO_H, display: "flex", gap: 6, padding: "6px 8px", alignItems: "center" }}>
-        <div style={{ flex: 1 }}>
-          <div className={fontCls} style={{ fontWeight: 800, color: theme.text, fontSize: 11, lineHeight: 1 }}>Design,<br />Elevated</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className={fontCls} style={{ fontWeight: 800, color: theme.text, fontSize: 10, lineHeight: 1.1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{heading}</div>
           <div style={{ marginTop: 5 }}>{btn}</div>
         </div>
-        <div style={{ width: 48, height: 48, background: theme.surfaceHover, borderRadius: 6, flexShrink: 0 }} />
+        <div style={{ width: 48, height: 48, borderRadius: 6, flexShrink: 0, position: "relative", overflow: "hidden", background: theme.surfaceHover }}>
+          {photo}
+        </div>
       </div>
     );
   } else if (hero === "product" || hero === "cover") {
     heroBody = (
-      <div style={{ height: HERO_H, background: `linear-gradient(135deg, ${accent}cc, ${theme.text})`, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: 8 }}>
-        <div className={fontCls} style={{ fontWeight: 800, color: "#fff", fontSize: 13, lineHeight: 1 }}>New Season</div>
-        <div style={{ marginTop: 4 }}>{btn}</div>
+      <div style={{ height: HERO_H, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: 8, background: `linear-gradient(135deg, ${accent}cc, ${theme.text})` }}>
+        {photo}{scrim}
+        <div className={fontCls} style={{ position: "relative", fontWeight: 800, color: "#fff", fontSize: 11, lineHeight: 1.05 }}>{heading}</div>
+        <div style={{ marginTop: 4, position: "relative" }}>{hero === "cover" ? outlineBtn : btn}</div>
       </div>
     );
   } else {
+    // storefront / centered — matches the real hero: bottom-anchored white text
+    // over the banner photo with an outlined CTA (see store-client renderHero).
     heroBody = (
-      <div style={{ height: HERO_H, background: `linear-gradient(160deg, ${accent}22, ${theme.surface})`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5 }}>
-        <div className={fontCls} style={{ fontWeight: 800, color: theme.text, fontSize: 12 }}>Shop the latest</div>
-        {btn}
+      <div style={{ height: HERO_H, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: hero === "centered" ? "center" : "flex-start", justifyContent: "flex-end", padding: 8, background: `linear-gradient(160deg, ${accent}cc 0%, ${accent}88 100%)` }}>
+        {photo}{scrim}
+        <div className={fontCls} style={{ position: "relative", fontWeight: 700, color: "#fff", fontSize: 10, lineHeight: 1.1, textAlign: hero === "centered" ? "center" : "left" }}>{heading}</div>
+        <div style={{ marginTop: 4, position: "relative" }}>{outlineBtn}</div>
       </div>
     );
   }
 
+  // Grid density is the other axis owners pick on — reflect layout & ratio.
+  const cols = s.layout === "compact" ? 4 : s.layout === "2col" ? 2 : 3;
+  const masonry = s.layout === "masonry";
+
   return (
     <div style={{ background: theme.bg, height: 150, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ height: 18, background: theme.surface, borderBottom: `1px solid ${theme.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 8px", flexShrink: 0 }}>
-        <span className={fontCls} style={{ fontSize: 7, fontWeight: 800, color: theme.text }}>Studio</span>
+        <span className={fontCls} style={{ fontSize: 7, fontWeight: 800, color: theme.text }}>{t.name}</span>
         <span style={{ display: "flex", gap: 3 }}>
           {[0, 1, 2].map((i) => <span key={i} style={{ width: 8, height: 2, borderRadius: 2, background: theme.muted, opacity: 0.5 }} />)}
         </span>
       </div>
       <div style={{ flexShrink: 0 }}>{heroBody}</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5, padding: 8, flex: 1, minHeight: 0 }}>
-        {[0, 1, 2].map((i) => (
-          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 3, minHeight: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 5, padding: 8, flex: 1, minHeight: 0 }}>
+        {Array.from({ length: cols }).map((_, i) => (
+          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 3, minHeight: 0, marginTop: masonry && i % 2 ? 6 : 0 }}>
             <div style={{ flex: 1, background: theme.surfaceHover, borderRadius: 4, minHeight: 0 }} />
             <div style={{ height: 3, width: "70%", background: theme.muted, opacity: 0.4, borderRadius: 2 }} />
             <div style={{ height: 3, width: "40%", background: accent, borderRadius: 2 }} />

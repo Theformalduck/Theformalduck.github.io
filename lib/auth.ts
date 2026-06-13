@@ -42,8 +42,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       authorize: async (credentials) => {
         if (!credentials?.email || !credentials?.password) return null;
 
+        // Accounts store lowercased emails; normalize the input so casing or a
+        // stray space (mobile autocapitalize/autofill) can't fail the lookup.
+        const email = String(credentials.email).trim().toLowerCase();
         const user = await db.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
         });
 
         if (!user?.passwordHash) return null;

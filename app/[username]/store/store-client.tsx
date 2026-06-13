@@ -16,6 +16,7 @@ import {
   type StoreSettings, type CustomButton, type HeroItem,
 } from "@/lib/store-themes";
 import { StoreSections } from "./store-sections";
+import { trackEvent } from "@/lib/analytics-events";
 import { SelloraBadge } from "@/components/sellora-badge";
 import { isCoreItem, defaultHomeLayout, type LayoutItem } from "@/lib/store-sections";
 import { useDisplayCurrency, useFmt, CurrencyProvider, CurrencySwitcher } from "./currency";
@@ -367,6 +368,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
       // Verify the Stripe session and create the local order.
       const sessionId = searchParams.get("session_id");
       if (sessionId) {
+        trackEvent("purchase", { transaction_id: sessionId });
         fetch("/api/orders/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -478,6 +480,7 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
 
   const addToCart = (product: Product) => {
     if (product.id.startsWith("__ph")) return;
+    trackEvent("add_to_cart", { value: product.price, items: [{ item_id: product.id, item_name: product.name, price: product.price, quantity: 1 }] });
     setCart(prev => {
       const existing = prev.find(i => i.product.id === product.id);
       if (existing) return prev.map(i => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
@@ -583,6 +586,10 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
 
   const checkout = async () => {
     if (!cart.length) return;
+    trackEvent("begin_checkout", {
+      value: totalPrice,
+      items: cart.map(i => ({ item_id: i.product.id, item_name: i.product.name, price: i.product.price, quantity: i.quantity })),
+    });
     setCheckingOut(true);
     setCheckoutError(null);
     try {
@@ -1652,6 +1659,41 @@ export default function StoreClient({ user, storeSettings, products, isOwner, se
                       </div>
                     </div>
                   ))}
+                  {/* Cross-sell: suggest items not yet in the cart (featured first). */}
+                  {(liveSettings.cartCrossSell ?? false) && (() => {
+                    const inCart = new Set(cart.map(i => i.product.id));
+                    const pool = activeProducts.filter(p => !inCart.has(p.id));
+                    const picks = [
+                      ...pool.filter(p => featuredIds.includes(p.id)),
+                      ...pool.filter(p => !featuredIds.includes(p.id)),
+                    ].slice(0, 3);
+                    if (!picks.length) return null;
+                    return (
+                      <div className="pt-3 border-t" style={{ borderColor: theme.border }}>
+                        <p className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: theme.muted }}>You might also like</p>
+                        <div className="space-y-2.5">
+                          {picks.map(p => (
+                            <div key={p.id} className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0" style={{ background: theme.surfaceHover }}>
+                                {p.images[0]
+                                  ? <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                                  : <div className="w-full h-full flex items-center justify-center"><TypeIcon type={p.type} className="w-5 h-5 text-gray-400" /></div>}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold leading-snug line-clamp-1">{p.name}</p>
+                                <p className="text-xs" style={{ color: theme.muted }}>{fmt(p.price)}</p>
+                              </div>
+                              <button onClick={() => addToCart(p)}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-80"
+                                style={{ background: accent, color: accentText }} title={`Add ${p.name} to cart`}>
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {cartNote && (
                     <div className="pt-2">
                       <label className="block text-xs font-semibold mb-1.5" style={{ color: theme.muted }}>Add a note to your order</label>

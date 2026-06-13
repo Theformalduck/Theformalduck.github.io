@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ShoppingBag, Plus, Minus, X, Shield, Loader2, Truck, Check, MapPin } from "lucide-react";
+import { trackEvent } from "@/lib/analytics-events";
 import { STORE_THEMES, BUTTON_STYLES, FONT_STYLES, type StoreSettings } from "@/lib/store-themes";
 import { useDisplayCurrency, CurrencySwitcher } from "../currency";
 
@@ -18,11 +19,12 @@ interface CartProduct {
 interface CartItem { product: CartProduct; quantity: number }
 
 export default function CartClient({
-  user, storeSettings, sellerHasPayments,
+  user, storeSettings, sellerHasPayments, recommendations = [],
 }: {
   user: { name: string | null; username: string; image: string | null };
   storeSettings: StoreSettings;
   sellerHasPayments: boolean;
+  recommendations?: CartProduct[];
 }) {
   const theme    = STORE_THEMES[storeSettings.theme] ?? STORE_THEMES.default;
   const accent   = storeSettings.primaryColor;
@@ -61,6 +63,24 @@ export default function CartClient({
     if (qty <= 0) { setCart(prev => prev.filter(i => i.product.id !== id)); return; }
     setCart(prev => prev.map(i => i.product.id === id ? { ...i, quantity: qty } : i));
   };
+
+  const addRecommended = (p: CartProduct) => {
+    trackEvent("add_to_cart", { value: p.price, items: [{ item_id: p.id, item_name: p.name, price: p.price, quantity: 1 }] });
+    setCart(prev => {
+      const idx = prev.findIndex(i => i.product.id === p.id);
+      if (idx >= 0) return prev.map((i, j) => j === idx ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { product: p, quantity: 1 }];
+    });
+  };
+
+  // Cross-sell pool: active products not already in the cart, featured first.
+  const featuredIds = storeSettings.featuredIds ?? [];
+  const crossSellPicks = (() => {
+    if (!(storeSettings.cartCrossSell ?? false) || cart.length === 0) return [];
+    const inCart = new Set(cart.map(i => i.product.id));
+    const pool = recommendations.filter(p => !inCart.has(p.id));
+    return [...pool.filter(p => featuredIds.includes(p.id)), ...pool.filter(p => !featuredIds.includes(p.id))].slice(0, 4);
+  })();
 
   const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
   const totalPrice = cart.reduce((s, i) => s + i.product.price * i.quantity, 0);
@@ -109,6 +129,10 @@ export default function CartClient({
 
   const checkout = async () => {
     if (!cart.length) return;
+    trackEvent("begin_checkout", {
+      value: totalPrice,
+      items: cart.map(i => ({ item_id: i.product.id, item_name: i.product.name, price: i.product.price, quantity: i.quantity })),
+    });
     setCheckingOut(true);
     setCheckoutError(null);
     try {
@@ -199,6 +223,35 @@ export default function CartClient({
                   </div>
                 </div>
               ))}
+
+              {/* Cross-sell: one-tap additions, featured products first */}
+              {crossSellPicks.length > 0 && (
+                <div className="rounded-2xl border p-4" style={{ borderColor: theme.border, background: theme.surface }}>
+                  <p className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: theme.muted }}>You might also like</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {crossSellPicks.map(p => (
+                      <div key={p.id} className="rounded-xl border overflow-hidden" style={{ borderColor: theme.border }}>
+                        <Link href={`/${user.username}/store/products/${p.id}`} className="block aspect-square" style={{ background: theme.surfaceHover }}>
+                          {p.images?.[0] && (
+                            <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                          )}
+                        </Link>
+                        <div className="p-2">
+                          <p className="text-[11px] font-semibold leading-tight line-clamp-1" style={{ color: theme.text }}>{p.name}</p>
+                          <div className="flex items-center justify-between mt-1.5">
+                            <span className="text-[11px] font-bold" style={{ color: theme.muted }}>{fmt(p.price)}</span>
+                            <button onClick={() => addRecommended(p)}
+                              className="w-6 h-6 rounded-md flex items-center justify-center transition-opacity hover:opacity-80"
+                              style={{ background: accent, color: "#fff" }} title={`Add ${p.name}`}>
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Summary */}

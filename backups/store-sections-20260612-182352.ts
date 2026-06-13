@@ -185,21 +185,19 @@ export function defaultSection(type: StoreSectionType): StoreSection {
 }
 
 // Metadata for the "add section" menu (icon names map to lucide in the UI).
-// `group` drives the categorized picker, ordered by what sells first.
-export const SECTION_META: { type: StoreSectionType; label: string; icon: string; desc: string; group: string }[] = [
-  { type: "featured",     label: "Featured products", icon: "Sparkles",  desc: "Highlight a row of products",                group: "Sell" },
-  { type: "spotlight",    label: "Featured product",  icon: "Star",      desc: "One product, large, with buy button",        group: "Sell" },
-  { type: "countdown",    label: "Countdown",         icon: "Timer",     desc: "Urgency timer for sales & drops",            group: "Sell" },
-  { type: "banner",       label: "Banner",            icon: "Megaphone",  desc: "Headline, text & call-to-action",           group: "Sell" },
-  { type: "richtext",     label: "Rich text",         icon: "Type",       desc: "A heading and paragraph",                   group: "Tell your story" },
-  { type: "gallery",      label: "Image gallery",     icon: "Images",     desc: "Grid of images",                            group: "Tell your story" },
-  { type: "video",        label: "Video",             icon: "Play",       desc: "Embed a YouTube video",                     group: "Tell your story" },
-  { type: "testimonials", label: "Testimonials",      icon: "Quote",      desc: "Customer reviews",                          group: "Build trust" },
-  { type: "faq",          label: "FAQ",               icon: "HelpCircle", desc: "Questions & answers",                       group: "Build trust" },
-  { type: "newsletter",   label: "Newsletter",        icon: "Mail",       desc: "Email sign-up block",                       group: "Grow" },
-  { type: "blocks",       label: "Flexible section",  icon: "LayoutGrid", desc: "Build from heading, text, button & image blocks", group: "Custom" },
+export const SECTION_META: { type: StoreSectionType; label: string; icon: string; desc: string }[] = [
+  { type: "blocks",       label: "Flexible section", icon: "LayoutGrid", desc: "Build from heading, text, button & image blocks" },
+  { type: "banner",       label: "Banner",          icon: "Megaphone",   desc: "Headline, text & call-to-action" },
+  { type: "featured",     label: "Featured products", icon: "Sparkles",  desc: "Highlight a row of products" },
+  { type: "spotlight",    label: "Featured product",  icon: "Star",      desc: "One product, large, with buy button" },
+  { type: "countdown",    label: "Countdown",         icon: "Timer",     desc: "Urgency timer for sales & drops" },
+  { type: "gallery",      label: "Image gallery",   icon: "Images",      desc: "Grid of images" },
+  { type: "richtext",     label: "Rich text",       icon: "Type",        desc: "A heading and paragraph" },
+  { type: "testimonials", label: "Testimonials",    icon: "Quote",       desc: "Customer reviews" },
+  { type: "faq",          label: "FAQ",             icon: "HelpCircle",  desc: "Questions & answers" },
+  { type: "video",        label: "Video",           icon: "Play",        desc: "Embed a YouTube video" },
+  { type: "newsletter",   label: "Newsletter",      icon: "Mail",        desc: "Email sign-up block" },
 ];
-export const SECTION_GROUPS = ["Sell", "Tell your story", "Build trust", "Grow", "Custom"];
 
 // Each section type's natural width/background, used as the fallback when the
 // user hasn't overridden the per-section design controls.

@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useMemo, type ReactNode } from "react";
+import { useState, useMemo, useRef, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, ShoppingBag, Zap, Shield, RotateCcw, Truck,
   Star, ChevronDown, ChevronUp, Package, Download, Briefcase, RefreshCw, Check, Loader2,
+  Heart, Share2, ZoomIn, X,
 } from "lucide-react";
 import { useDisplayCurrency, CurrencySwitcher } from "../../currency";
 import { StoreSections } from "../../store-sections";
+import { trackEvent } from "@/lib/analytics-events";
 
 function readableTextOn(hex: string): string {
   const h = (hex || "#000000").replace("#", "");
@@ -94,12 +96,90 @@ export default function ProductDetailClient({
   const infoLayout   = storeSettings.productInfoLayout ?? "accordion";
   const showRelated  = storeSettings.showRelatedProducts ?? true;
   const relatedCount = storeSettings.relatedProductsCount ?? 4;
+  const zoomEnabled  = storeSettings.showProductZoom ?? true;
+  const shareEnabled = storeSettings.showShareButtons ?? true;
+  const wishlistEnabled = storeSettings.showWishlist ?? false;
+  const stockBadgeOn = storeSettings.stockBadge ?? true;
+  const stockThreshold = storeSettings.stockBadgeThreshold ?? 5;
+  const ratingsEnabled = storeSettings.showRatings ?? true;
+  const buyNowEnabled  = storeSettings.showBuyNow ?? true;
+  const trustRowEnabled = storeSettings.productTrustBadges ?? true;
 
   const baseCurrency = storeSettings.baseCurrency || "USD";
   const currencyOptions = Array.from(new Set([baseCurrency, ...(storeSettings.enabledCurrencies ?? [])]));
   const showCurrencySwitcher = !!storeSettings.showCurrencySwitcher && currencyOptions.length > 1;
   const cur = useDisplayCurrency(baseCurrency, currencyOptions);
   const fmt = cur.fmt;
+
+  // Funnel analytics: a product page view is the top of the purchase funnel.
+  useEffect(() => {
+    trackEvent("view_item", { value: product.price, items: [{ item_id: product.id, item_name: product.name, price: product.price }] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
+
+  // Image zoom lightbox, wishlist heart & share button state.
+  const [zoomSrc, setZoomSrc] = useState<string | null>(null);
+  const [wishlisted, setWishlisted] = useState(false);
+  const [wishBusy, setWishBusy] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  useEffect(() => {
+    if (!wishlistEnabled) return;
+    fetch("/api/wishlist")
+      .then(r => r.json())
+      .then(d => setWishlisted(((d.productIds ?? []) as string[]).includes(product.id)))
+      .catch(() => {});
+  }, [wishlistEnabled, product.id]);
+
+  useEffect(() => {
+    if (!zoomSrc) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setZoomSrc(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomSrc]);
+
+  const toggleWishlist = async () => {
+    if (wishBusy) return;
+    setWishBusy(true);
+    try {
+      const res = wishlisted
+        ? await fetch(`/api/wishlist?productId=${product.id}`, { method: "DELETE" })
+        : await fetch("/api/wishlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: product.id }) });
+      if (res.status === 401) {
+        router.push(`/login?callbackUrl=/${user.username}/store/products/${product.id}`);
+        return;
+      }
+      if (res.ok) setWishlisted(w => !w);
+    } finally {
+      setWishBusy(false);
+    }
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (typeof navigator.share === "function") {
+      try { await navigator.share({ title: product.name, url }); return; } catch { return; /* user cancelled */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 1500);
+    } catch {}
+  };
+
+  // Sticky add-to-cart: visible once the main buy row has scrolled above the fold.
+  const buyRowRef = useRef<HTMLDivElement>(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  useEffect(() => {
+    const el = buyRowRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const ob = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < 0),
+      { threshold: 0 }
+    );
+    ob.observe(el);
+    return () => ob.disconnect();
+  }, []);
 
   const [activeImage, setActiveImage] = useState(0);
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
@@ -172,6 +252,7 @@ export default function ProductDetailClient({
 
   const handleAddToCart = () => {
     if (!canAddToCart) return;
+    trackEvent("add_to_cart", { value: displayPrice * qty, items: [{ item_id: product.id, item_name: product.name, price: displayPrice, quantity: qty }] });
     setAdding(true);
     try {
       const cartKey = `cart_${user.username}`;
@@ -202,6 +283,7 @@ export default function ProductDetailClient({
 
   const handleBuyNow = async () => {
     if (!canAddToCart || !sellerHasPayments) return;
+    trackEvent("begin_checkout", { value: displayPrice * qty, items: [{ item_id: product.id, item_name: product.name, price: displayPrice, quantity: qty }] });
     setBuyingNow(true);
     setBuyNowError(null);
     try {
@@ -299,7 +381,8 @@ export default function ProductDetailClient({
             /* Stacked, every image full width, scrolling down */
             <div className="flex flex-col gap-3">
               {(images.length ? images : [null]).map((img, i) => (
-                <div key={i} className="aspect-[3/4] rounded-2xl overflow-hidden relative" style={{ background: cardBg }}>
+                <div key={i} className={`aspect-[3/4] rounded-2xl overflow-hidden relative ${img && zoomEnabled ? "cursor-zoom-in" : ""}`} style={{ background: cardBg }}
+                  onClick={() => img && zoomEnabled && setZoomSrc(img)}>
                   {img
                     ? <img src={img} alt={product.name} className="w-full h-full object-cover" />
                     : <div className="w-full h-full flex items-center justify-center">{TypeIcon && <TypeIcon className="w-24 h-24 opacity-20" />}</div>}
@@ -313,7 +396,8 @@ export default function ProductDetailClient({
             /* Grid – 2-column mosaic of all images */
             <div className="grid grid-cols-2 gap-3">
               {(images.length ? images : [null]).map((img, i) => (
-                <div key={i} className={`aspect-square rounded-2xl overflow-hidden relative ${i === 0 && images.length > 1 ? "col-span-2 aspect-[3/2]" : ""}`} style={{ background: cardBg }}>
+                <div key={i} className={`aspect-square rounded-2xl overflow-hidden relative ${i === 0 && images.length > 1 ? "col-span-2 aspect-[3/2]" : ""} ${img && zoomEnabled ? "cursor-zoom-in" : ""}`} style={{ background: cardBg }}
+                  onClick={() => img && zoomEnabled && setZoomSrc(img)}>
                   {img
                     ? <img src={img} alt={product.name} className="w-full h-full object-cover" />
                     : <div className="w-full h-full flex items-center justify-center">{TypeIcon && <TypeIcon className="w-16 h-16 opacity-20" />}</div>}
@@ -337,7 +421,8 @@ export default function ProductDetailClient({
                   ))}
                 </div>
               )}
-              <div className="flex-1 aspect-[3/4] rounded-2xl overflow-hidden bg-gray-100 relative" style={{ background: cardBg }}>
+              <div className={`flex-1 aspect-[3/4] rounded-2xl overflow-hidden bg-gray-100 relative group ${zoomEnabled && (activeVariantImage || images.length > 0) ? "cursor-zoom-in" : ""}`} style={{ background: cardBg }}
+                onClick={() => { const src = activeVariantImage || images[activeImage]; if (zoomEnabled && src) setZoomSrc(src); }}>
                 {activeVariantImage ? (
                   <img src={activeVariantImage} alt={product.name} className="w-full h-full object-cover" />
                 ) : images.length > 0 ? (
@@ -345,6 +430,11 @@ export default function ProductDetailClient({
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     {TypeIcon && <TypeIcon className="w-24 h-24 opacity-20" />}
+                  </div>
+                )}
+                {zoomEnabled && (activeVariantImage || images.length > 0) && (
+                  <div className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <ZoomIn className="w-4 h-4 text-white" />
                   </div>
                 )}
                 {discount && (
@@ -366,13 +456,35 @@ export default function ProductDetailClient({
               </div>
             )}
 
-            {/* Name */}
-            <h1 className="text-3xl lg:text-4xl font-bold leading-tight mb-2" style={{ fontFamily: "inherit", color: theme.text }}>
-              {product.name}
-            </h1>
+            {/* Name + save/share actions */}
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <h1 className="text-3xl lg:text-4xl font-bold leading-tight" style={{ fontFamily: "inherit", color: theme.text }}>
+                {product.name}
+              </h1>
+              {(wishlistEnabled || shareEnabled) && (
+                <div className="flex items-center gap-2 flex-shrink-0 mt-1.5">
+                  {wishlistEnabled && (
+                    <button onClick={toggleWishlist} disabled={wishBusy}
+                      title={wishlisted ? "Remove from wishlist" : "Save to wishlist"}
+                      className="w-9 h-9 rounded-full border flex items-center justify-center transition-all hover:scale-105"
+                      style={{ borderColor: wishlisted ? accent : theme.border, color: wishlisted ? accent : theme.muted, background: wishlisted ? `${accent}12` : theme.surface }}>
+                      <Heart className="w-4 h-4" fill={wishlisted ? accent : "none"} />
+                    </button>
+                  )}
+                  {shareEnabled && (
+                    <button onClick={handleShare}
+                      title="Share this product"
+                      className="w-9 h-9 rounded-full border flex items-center justify-center transition-all hover:scale-105"
+                      style={{ borderColor: theme.border, color: theme.muted, background: theme.surface }}>
+                      {shareCopied ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Rating */}
-            {avgRating && (
+            {ratingsEnabled && avgRating && (
               <div className="flex items-center gap-1.5 mb-4">
                 {[1,2,3,4,5].map(s => (
                   <Star key={s} className="w-4 h-4" fill={s <= Math.round(avgRating) ? accent : "none"} style={{ color: accent }} />
@@ -451,18 +563,18 @@ export default function ProductDetailClient({
               </div>
             ))}
 
-            {/* Stock status */}
-            {product.inventory != null && (
+            {/* Stock status (threshold for "Only X left" is configurable) */}
+            {stockBadgeOn && product.inventory != null && (
               <div className="flex items-center gap-1.5 text-sm mb-5">
                 <div className={`w-2 h-2 rounded-full ${product.inventory > 0 ? "bg-emerald-400" : "bg-red-400"}`} />
                 <span style={{ color: theme.muted }}>
-                  {product.inventory <= 0 ? "Out of stock" : product.inventory <= 10 ? `Only ${product.inventory} left` : "In stock"}
+                  {product.inventory <= 0 ? "Out of stock" : product.inventory <= stockThreshold ? `Only ${product.inventory} left` : "In stock"}
                 </span>
               </div>
             )}
 
             {/* Qty + Add to cart */}
-            <div className="flex gap-3 mb-4">
+            <div className="flex gap-3 mb-4" ref={buyRowRef}>
               <div className="flex items-center border rounded-xl overflow-hidden" style={{ borderColor: theme.border }}>
                 <button onClick={() => setQty(q => Math.max(1, q - 1))}
                   className="px-3 py-3 hover:opacity-70 transition-opacity text-lg leading-none" style={{ color: theme.text }}>−</button>
@@ -477,8 +589,39 @@ export default function ProductDetailClient({
               </button>
             </div>
 
+            {/* Image zoom lightbox */}
+            {zoomSrc && (
+              <div className="fixed inset-0 z-[120] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out" onClick={() => setZoomSrc(null)}>
+                <button onClick={() => setZoomSrc(null)} aria-label="Close zoom"
+                  className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+                <img src={zoomSrc} alt={product.name} className="max-w-full max-h-full object-contain rounded-lg" onClick={(e) => e.stopPropagation()} />
+              </div>
+            )}
+
+            {/* Sticky add-to-cart: appears once the main buy row scrolls out of
+                view, so the purchase action is always one tap away (mobile-first). */}
+            {(storeSettings.stickyAddToCart ?? false) && showStickyBar && (
+              <div className="fixed inset-x-0 bottom-0 z-40 border-t px-4 py-3 flex items-center gap-3"
+                style={{ background: theme.surface, borderColor: theme.border, boxShadow: "0 -6px 24px rgba(0,0,0,0.08)" }}>
+                <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0" style={{ background: theme.surfaceHover }}>
+                  {images[0] && <img src={images[0]} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate" style={{ color: theme.text }}>{product.name}</p>
+                  <p className="text-xs font-bold" style={{ color: accent }}>{fmt(displayPrice)}</p>
+                </div>
+                <button onClick={handleAddToCart} disabled={adding || !canAddToCart}
+                  className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold flex-shrink-0 transition-all ${btnStyle.radius} ${!canAddToCart ? "opacity-50" : ""}`}
+                  style={{ background: accent, color: "#fff" }}>
+                  {added ? <><Check className="w-4 h-4" />Added!</> : <><ShoppingBag className="w-4 h-4" />Add to bag</>}
+                </button>
+              </div>
+            )}
+
             {/* Buy now */}
-            {sellerHasPayments && (
+            {buyNowEnabled && sellerHasPayments && (
               <div className="mb-6">
                 <button onClick={handleBuyNow} disabled={!canAddToCart || buyingNow}
                   className={`w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold border-2 transition-all ${btnStyle.radius} ${(!canAddToCart || buyingNow) ? "opacity-50 cursor-not-allowed" : ""}`}
@@ -494,18 +637,20 @@ export default function ProductDetailClient({
             )}
 
             {/* Trust badges */}
-            <div className="grid grid-cols-3 gap-3 mb-6 py-4 border-t border-b" style={{ borderColor: theme.border }}>
-              {[
-                { icon: Shield, label: "Secure checkout" },
-                { icon: RotateCcw, label: "Easy returns" },
-                { icon: product.type === "DIGITAL" ? Download : Truck, label: product.type === "DIGITAL" ? "Instant delivery" : "Fast shipping" },
-              ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex flex-col items-center gap-1 text-center">
-                  <Icon className="w-4 h-4" style={{ color: theme.muted }} />
-                  <span className="text-xs" style={{ color: theme.muted }}>{label}</span>
-                </div>
-              ))}
-            </div>
+            {trustRowEnabled && (
+              <div className="grid grid-cols-3 gap-3 mb-6 py-4 border-t border-b" style={{ borderColor: theme.border }}>
+                {[
+                  { icon: Shield, label: "Secure checkout" },
+                  { icon: RotateCcw, label: "Easy returns" },
+                  { icon: product.type === "DIGITAL" ? Download : Truck, label: product.type === "DIGITAL" ? "Instant delivery" : "Fast shipping" },
+                ].map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex flex-col items-center gap-1 text-center">
+                    <Icon className="w-4 h-4" style={{ color: theme.muted }} />
+                    <span className="text-xs" style={{ color: theme.muted }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Description / details, accordion or tabs (store setting) */}
             {(() => {
